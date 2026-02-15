@@ -235,38 +235,49 @@
 
         async function finalize() {
             if(state.currentItems.length === 0) return toast("ADICIONE ITENS!");
-            
-            const finalData = {
-                id: Date.now(),
-                docNumber: state.docNumber,
-                total: state.total,
-                items: state.currentItems,
-                date: new Date().toISOString()
-            };
+            async function finalize() {
+    if(state.currentItems.length === 0) return toast("ADICIONE ITENS!");
+    
+    const finalData = {
+        id: Date.now(),
+        docNumber: String(state.docNumber),
+        total: state.total,
+        items: state.currentItems,
+        date: new Date().toISOString()
+    };
 
-            const h = getHistory(); 
-            h.unshift(finalData);
-            localStorage.setItem(DB_KEY, JSON.stringify(h));
-            localStorage.setItem(SERIAL_KEY, state.docNumber);
+    // Salva Local primeiro (Segurança)
+    const h = getHistory(); 
+    h.unshift(finalData);
+    localStorage.setItem(DB_KEY, JSON.stringify(h));
+    localStorage.setItem(SERIAL_KEY, state.docNumber);
+    
+    // Envio para o Supabase
+    if(dbClient) {
+        try {
+            const { error } = await dbClient.from('orcamentos').insert([{
+                doc_number: String(state.docNumber), 
+                total: parseFloat(state.total), 
+                data: JSON.stringify(state.currentItems) // Enviando como String para evitar erro de tipo
+            }]);
             
-            // Tenta enviar para Supabase se configurado
-            if(dbClient) {
-                try {
-                    await dbClient.from('orcamentos').insert([{
-                        doc_number: String(state.docNumber), 
-                        total: state.total, 
-                        data: state.currentItems
-                    }]);
-                    toast("SALVO NA NUVEM!");
-                } catch(err) { console.error("Erro nuvem:", err); }
+            if (error) {
+                console.error("Erro Supabase:", error.message);
+                toast("ERRO NA NUVEM: " + error.message);
+            } else {
+                toast("SALVO NA NUVEM COM SUCESSO!");
             }
-            
-            toast("ORÇAMENTO CONCLUÍDO!");
-            state.currentItems = [];
-            state.docNumber = '';
-            localStorage.removeItem(DRAFT_KEY);
-            setTimeout(() => router.go('home'), 1000);
+        } catch(err) { 
+            console.error("Erro crítico:", err); 
         }
+    }
+    
+    toast("ORÇAMENTO CONCLUÍDO!");
+    state.currentItems = [];
+    state.docNumber = '';
+    localStorage.removeItem(DRAFT_KEY);
+    setTimeout(() => router.go('home'), 1000);
+}
 
         function startManual() { state.currentItems = []; addItem(); router.go('editor'); }
         function addItem() { state.currentItems.push({ condominio: 'CONDOMÍNIO', peca: 'SERVIÇO', valorUnitario: 0 }); router.renderEditor(); }
@@ -279,3 +290,4 @@
     </script>
 </body>
 </html>
+
