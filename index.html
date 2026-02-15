@@ -132,35 +132,51 @@
         }
 
         async function finalize() {
-            if(state.currentItems.length === 0) return toast("ADICIONE ITENS!");
-            const finalData = { id: Date.now(), docNumber: String(state.docNumber), total: parseFloat(state.total), items: state.currentItems, date: new Date().toISOString() };
-            
-            // Local
-            const h = JSON.parse(localStorage.getItem(DB_KEY) || '[]');
-            h.unshift(finalData);
-            localStorage.setItem(DB_KEY, JSON.stringify(h));
-            localStorage.setItem(SERIAL_KEY, state.docNumber);
+    if(state.currentItems.length === 0) return toast("ADICIONE ITENS!");
+    
+    // Dados para o histórico local
+    const finalData = { 
+        id: Date.now(), 
+        docNumber: String(state.docNumber), 
+        total: parseFloat(state.total), 
+        items: state.currentItems, 
+        date: new Date().toISOString() 
+    };
 
-            // Supabase
-            if(dbClient) {
-                toast("ENVIANDO PARA NUVEM...");
-                const { error } = await dbClient.from('orcamentos').insert([{
-                    doc_number: String(state.docNumber),
-                    total: parseFloat(state.total),
-                    data: finalData.items // Se der erro 400, mude para: JSON.stringify(finalData.items)
-                }]);
-                if(error) {
-                    console.error(error);
-                    toast("ERRO NUVEM: " + error.message);
-                } else {
-                    toast("CONCLUÍDO COM NUVEM!");
-                }
-            } else { toast("SALVO APENAS LOCAL (SEM NUVEM)"); }
+    // 1. Salva no navegador (Local Storage)
+    const h = JSON.parse(localStorage.getItem(DB_KEY) || '[]');
+    h.unshift(finalData);
+    localStorage.setItem(DB_KEY, JSON.stringify(h));
+    localStorage.setItem(SERIAL_KEY, state.docNumber);
 
-            state.currentItems = []; state.docNumber = '';
-            localStorage.removeItem(DRAFT_KEY);
-            setTimeout(() => router.go('home'), 1500);
+    // 2. Envia para o Supabase com os nomes exatos do seu Schema
+    if(dbClient) {
+        toast("SINCRONIZANDO NUVEM...");
+        
+        const { error } = await dbClient.from('orcamentos').insert([{
+            docNumber: String(state.docNumber),   // Nome exato da coluna no SQL
+            docType: "FATURAR",                   // Adicionado conforme seu schema
+            serviceType: "MANUTENÇÃO",            // Adicionado conforme seu schema
+            total: parseFloat(state.total),       // double precision
+            items: state.currentItems,            // jsonb aceita o array direto
+            date: new Date().toISOString()
+        }]);
+
+        if(error) {
+            console.error("Erro Supabase:", error);
+            toast("ERRO NA NUVEM: " + error.message);
+            return; 
+        } else {
+            toast("SALVO COM SUCESSO!");
         }
+    }
+
+    // 3. Limpa e volta para o início
+    state.currentItems = []; 
+    state.docNumber = '';
+    localStorage.removeItem(DRAFT_KEY);
+    setTimeout(() => router.go('home'), 1500);
+}
 
         function startManual() { state.currentItems = []; addItem(); router.go('editor'); }
         function addItem() { state.currentItems.push({ condominio: 'CONDOMÍNIO', peca: 'SERVIÇO', valorUnitario: 0 }); router.renderEditor(); }
@@ -172,3 +188,4 @@
     </script>
 </body>
 </html>
+
