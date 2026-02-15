@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Torres Elevadores | Gestão Cloud</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22Torres%20Elevadores%22,%22short_name%22:%22Torres%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22,%22background_color%22:%22#0d9488%22,%22theme_color%22:%22#0d9488%22,%22icons%22:[{%22src%22:%22https://cdn-icons-png.flaticon.com/512/4232/4232230.png%22,%22sizes%22:%22512x512%22,%22type%22:%22image/png%22}]}">
+
+    <style>
+        body { font-family: 'Montserrat', sans-serif; background-color: #f8fafc; color: #1e293b; -webkit-tap-highlight-color: transparent; }
+        .app-card { background: #ffffff; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        .modern-input { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; width: 100%; font-size: 14px; transition: all 0.2s; }
+        .modern-input:focus { border-color: #0d9488; outline: none; }
+        .bottom-nav { background: #ffffff; border-top: 1px solid #e2e8f0; position: fixed; bottom: 0; width: 100%; z-index: 100; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 10px; font-weight: 700; color: #94a3b8; padding: 4px; transition: 0.2s; }
+        .nav-item.active { color: #0d9488; }
+        .fab-button { background: #0d9488; width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: white; margin-top: -28px; box-shadow: 0 8px 15px rgba(13, 148, 136, 0.3); border: none; }
+        .toggle-btn { flex: 1; padding: 12px 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; color: #64748b; }
+        .toggle-btn.active { background-color: #0d9488; color: white; border-color: #0d9488; }
+    </style>
+</head>
+<body class="pb-32">
+
+    <header class="px-6 pt-10 pb-6 bg-white border-b border-slate-100 flex justify-between items-center">
+        <div>
+            <h1 class="text-xl font-extrabold text-slate-900">Torres Elevadores</h1>
+            <p class="text-[9px] text-teal-600 font-bold uppercase tracking-wider">Gestão em Nuvem v2.0</p>
+        </div>
+        <div class="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center text-teal-400">
+            <i data-lucide="cloud-lightning" class="w-5 h-5"></i>
+        </div>
+    </header>
+
+    <main id="app-content" class="px-5 py-6 space-y-5"></main>
+
+    <nav class="bottom-nav px-10 py-4 flex justify-between items-center">
+        <button onclick="router.go('home')" class="nav-item" id="nav-home">
+            <i data-lucide="home" class="w-6 h-6 mb-1"></i>
+            <span>Início</span>
+        </button>
+        <button onclick="handleFabClick()" class="fab-button">
+            <i data-lucide="plus" class="w-7 h-7"></i>
+        </button>
+        <button onclick="router.go('history')" class="nav-item" id="nav-history">
+            <i data-lucide="database" class="w-6 h-6 mb-1"></i>
+            <span>Nuvem</span>
+        </button>
+    </nav>
+
+    <div id="app-toast" class="fixed bottom-28 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-xl shadow-xl opacity-0 transition-opacity z-[200] text-xs font-bold uppercase pointer-events-none text-center"></div>
+
+    <script>
+        // --- CONFIGURAÇÃO SUPABASE ---
+        const SUPABASE_URL = 'https://pkxvkltyjicjifktozju.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBreHZrbHR5amljamlma3Rvemp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExMDI5MDQsImV4cCI6MjA4NjY3ODkwNH0.s-ooeRg2iV7TDO8uLIjt658d5nE4u2E2dEq_8RTUIPY';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const EMPRESA = { cnpj: "52.019.285/0001-06", email: "aetservicecorp@gmail.com", tel: "(92) 99433-0340", endereco: "Rua Menandro Tapajos, 5. Petrópolis." };
+        const CLIENTE_PADRAO = "TK ELEVADORES";
+
+        let state = { currentItems: [], total: 0, docType: 'FATURAR', serviceType: 'TROCA DE PEÇAS', docNumber: '' };
+
+        const toast = (msg) => {
+            const el = document.getElementById('app-toast');
+            el.innerText = msg; el.style.opacity = '1';
+            setTimeout(() => el.style.opacity = '0', 3000);
+        };
+
+        const router = {
+            async go(page, params = null) {
+                const content = document.getElementById('app-content');
+                content.innerHTML = '<div class="text-center py-20 text-slate-400 font-bold text-xs uppercase animate-pulse">Acessando Nuvem...</div>';
+                
+                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                if(document.getElementById(`nav-${page}`)) document.getElementById(`nav-${page}`).classList.add('active');
+
+                if(page === 'home') this.renderHome();
+                else if(page === 'create') this.renderCreate();
+                else if(page === 'editor') this.renderEditor();
+                else if(page === 'history') this.renderHistory();
+                else if(page === 'details') this.renderDetails(params);
+                
+                if(window.lucide) lucide.createIcons();
+            },
+
+            async renderHome() {
+                const { data: history } = await supabaseClient.from('orcamentos').select('total');
+                const totalGeral = history ? history.reduce((a, b) => a + b.total, 0) : 0;
+
+                document.getElementById('app-content').innerHTML = `
+                    <div class="app-card p-6 bg-slate-900 text-white mb-6">
+                        <p class="text-[10px] font-bold text-teal-400 uppercase mb-1">Total Geral em Nuvem</p>
+                        <h2 class="text-2xl font-black">R$ ${totalGeral.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</h2>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="router.go('create')" class="app-card p-6 flex flex-col items-center gap-3 active:scale-95 transition-transform">
+                            <i data-lucide="file-up" class="w-6 h-6 text-teal-600"></i>
+                            <span class="text-[10px] font-black uppercase">Importar Excel</span>
+                        </button>
+                        <button onclick="startManual()" class="app-card p-6 flex flex-col items-center gap-3 active:scale-95 transition-transform">
+                            <i data-lucide="edit-3" class="w-6 h-6 text-slate-600"></i>
+                            <span class="text-[10px] font-black uppercase">Novo Manual</span>
+                        </button>
+                    </div>
+                `;
+                lucide.createIcons();
+            },
+
+            renderCreate() {
+                document.getElementById('app-content').innerHTML = `
+                    <div class="app-card p-10 flex flex-col items-center text-center space-y-6">
+                        <div class="w-16 h-16 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center"><i data-lucide="upload" class="w-8 h-8"></i></div>
+                        <h3 class="font-black text-slate-900 uppercase text-xs tracking-widest">Carregar Planilha</h3>
+                        <input type="file" id="file-input" class="hidden" accept=".xlsx" onchange="handleFileUpload(event)">
+                        <button onclick="document.getElementById('file-input').click()" class="w-full py-4 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase">Selecionar Arquivo</button>
+                    </div>
+                `;
+                lucide.createIcons();
+            },
+
+            renderEditor() {
+                document.getElementById('app-content').innerHTML = `
+                    <div class="flex items-center justify-between mb-4">
+                        <button onclick="router.go('home')" class="p-2 bg-white rounded-lg border border-slate-200"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+                        <input type="text" class="w-24 font-black text-teal-600 bg-transparent border-b border-teal-200 text-center" value="${state.docNumber}" oninput="state.docNumber = this.value">
+                        <button onclick="addItem()" class="p-2 bg-teal-50 text-teal-600 rounded-lg"><i data-lucide="plus" class="w-5 h-5"></i></button>
+                    </div>
+                    <div class="space-y-4 pb-48" id="items-list">
+                        ${state.currentItems.map((item, idx) => `
+                            <div class="app-card p-4 space-y-3 border-l-4 border-teal-500">
+                                <div class="flex justify-between font-black text-[9px] uppercase text-slate-400">
+                                    <span>Item ${idx+1}</span>
+                                    <button onclick="removeItem(${idx})" class="text-red-400"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                </div>
+                                <input type="text" class="modern-input !text-xs uppercase font-bold" value="${item.condominio}" oninput="state.currentItems[${idx}].condominio = this.value.toUpperCase()" placeholder="Condomínio">
+                                <textarea class="modern-input !text-xs uppercase" oninput="state.currentItems[${idx}].peca = this.value.toUpperCase()" placeholder="Descrição">${item.peca}</textarea>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <input type="number" class="modern-input !text-xs font-bold" value="${item.valorUnitario}" oninput="state.currentItems[${idx}].valorUnitario = parseFloat(this.value); updateUI();" placeholder="Valor R$">
+                                    <input type="text" class="modern-input !text-xs" value="${item.qtde}" oninput="state.currentItems[${idx}].qtde = this.value" placeholder="Qtd">
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="fixed bottom-0 left-0 w-full p-6 bg-white border-t border-slate-100 z-[110] shadow-2xl">
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-[9px] font-black text-slate-400 uppercase">Subtotal</span>
+                            <span id="editor-total" class="text-xl font-black text-slate-900">R$ 0,00</span>
+                        </div>
+                        <button onclick="finalizeAndCloud()" class="w-full py-4 bg-teal-600 text-white rounded-xl font-black text-[10px] uppercase flex items-center justify-center gap-2">
+                            <i data-lucide="cloud-upload" class="w-4 h-4"></i> Finalizar e Salvar na Nuvem
+                        </button>
+                    </div>
+                `;
+                updateUI();
+                lucide.createIcons();
+            },
+
+            async renderHistory() {
+                const { data: history, error } = await supabaseClient.from('orcamentos').select('*').order('date', { ascending: false });
+                
+                document.getElementById('app-content').innerHTML = `
+                    <h2 class="font-black text-[10px] uppercase text-slate-400 mb-4">Banco de Dados Cloud</h2>
+                    <div class="space-y-3 pb-8">
+                        ${history && history.length > 0 ? history.map(h => `
+                            <div onclick="router.go('details', ${h.id})" class="app-card p-4 flex justify-between items-center active:bg-slate-50">
+                                <div>
+                                    <p class="font-bold text-sm text-slate-900">#${h.docNumber}</p>
+                                    <p class="text-[8px] font-bold text-slate-400 uppercase">${new Date(h.date).toLocaleDateString()} | ${h.items.length} itens</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-xs font-black text-teal-600">R$ ${h.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</p>
+                                    <i data-lucide="chevron-right" class="w-3 h-3 ml-auto text-slate-300"></i>
+                                </div>
+                            </div>
+                        `).join('') : '<div class="py-20 text-center text-slate-300 font-bold uppercase text-[10px]">Nenhum dado na nuvem</div>'}
+                    </div>
+                `;
+                lucide.createIcons();
+            },
+
+            async renderDetails(id) {
+                const { data: item } = await supabaseClient.from('orcamentos').select('*').eq('id', id).single();
+                if(!item) return router.go('history');
+
+                document.getElementById('app-content').innerHTML = `
+                    <button onclick="router.go('history')" class="mb-4 text-[9px] font-black text-slate-400 uppercase flex items-center gap-1"><i data-lucide="arrow-left" class="w-4 h-4"></i> Voltar</button>
+                    <div class="app-card p-6 space-y-6">
+                        <div class="border-b pb-4 flex justify-between">
+                            <div><h3 class="text-lg font-black">#${item.docNumber}</h3><p class="text-[8px] text-slate-400 uppercase">${new Date(item.date).toLocaleString()}</p></div>
+                            <button onclick="deleteFromCloud(${item.id})" class="text-red-400"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                        </div>
+                        <div class="space-y-2">
+                            ${item.items.map(i => `
+                                <div class="text-[10px] bg-slate-50 p-2 rounded border font-bold">
+                                    <div class="flex justify-between text-teal-600"><span>${i.condominio}</span><span>R$ ${parseFloat(i.valorUnitario).toLocaleString('pt-BR')}</span></div>
+                                    <p class="text-slate-500 uppercase mt-1 font-normal">${i.peca}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="flex justify-between items-center pt-4 border-t">
+                            <span class="text-[10px] font-black uppercase">Total</span>
+                            <span class="text-xl font-black">R$ ${item.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                        </div>
+                        <button onclick="generatePDF(${JSON.stringify(item).replace(/"/g, '&quot;')})" class="w-full py-4 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase flex items-center justify-center gap-2">
+                            <i data-lucide="download" class="w-4 h-4"></i> Baixar PDF
+                        </button>
+                    </div>
+                `;
+                lucide.createIcons();
+            }
+        };
+
+        function startManual() {
+            state = { currentItems: [], total: 0, docType: 'FATURAR', serviceType: 'TROCA DE PEÇAS', docNumber: Math.floor(1000 + Math.random() * 9000) };
+            addItem();
+            router.go('editor');
+        }
+
+        function addItem() {
+            state.currentItems.push({ os: '-', elevador: 'GERAL', peca: 'SERVIÇO TÉCNICO', qtde: '1', valorUnitario: 0, condominio: 'CONDOMÍNIO' });
+            if(document.getElementById('items-list')) router.renderEditor();
+        }
+
+        function removeItem(idx) {
+            state.currentItems.splice(idx, 1);
+            router.renderEditor();
+        }
+
+        function updateUI() {
+            state.total = state.currentItems.reduce((acc, curr) => acc + (parseFloat(curr.valorUnitario) || 0), 0);
+            const el = document.getElementById('editor-total');
+            if(el) el.innerText = `R$ ${state.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+        }
+
+        async function finalizeAndCloud() {
+            if(state.currentItems.length === 0) return toast("Adicione itens primeiro");
+            try {
+                toast("Salvando na Nuvem...");
+                const finalData = {
+                    docNumber: state.docNumber.toString(),
+                    docType: state.docType,
+                    serviceType: state.serviceType,
+                    total: state.total,
+                    items: state.currentItems,
+                    date: new Date().toISOString()
+                };
+                
+                const { error } = await supabaseClient.from('orcamentos').insert([finalData]);
+                if (error) throw error;
+
+                generatePDF(finalData);
+                toast("Sucesso! Orçamento Salvo.");
+                router.go('history');
+            } catch (e) {
+                console.error(e);
+                toast("Erro ao conectar com Supabase");
+            }
+        }
+
+        async function deleteFromCloud(id) {
+            if(confirm("Excluir permanentemente da nuvem?")) {
+                await supabaseClient.from('orcamentos').delete().eq('id', id);
+                router.go('history');
+                toast("Excluído!");
+            }
+        }
+
+        async function handleFileUpload(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
+                
+                // Lógica simples de extração (pode ser refinada conforme seu modelo de Excel)
+                const newItems = rows.slice(1).map(row => ({
+                    os: row[0] || '-',
+                    elevador: row[1] || 'N/A',
+                    peca: String(row[2] || "").toUpperCase(),
+                    qtde: row[3] || '1',
+                    valorUnitario: parseFloat(row[4]) || 0,
+                    condominio: String(row[5] || "CONDOMÍNIO").toUpperCase()
+                })).filter(i => i.peca);
+
+                if(newItems.length > 0) {
+                    state.currentItems = newItems;
+                    state.docNumber = "XLS-" + Math.floor(Math.random()*999);
+                    router.go('editor');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function generatePDF(data) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Layout profissional simplificado
+            doc.setFillColor(15, 23, 42);
+            doc.rect(0, 0, 210, 40, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(18);
+            doc.text("TORRES ELEVADORES", 15, 20);
+            doc.setFontSize(8);
+            doc.text(`CNPJ: ${EMPRESA.cnpj} | ${EMPRESA.email}`, 15, 30);
+            
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(14);
+            doc.text(`ORÇAMENTO #${data.docNumber}`, 150, 20);
+            doc.setFontSize(9);
+            doc.text(`Data: ${new Date(data.date).toLocaleDateString()}`, 150, 28);
+
+            doc.autoTable({
+                startY: 50,
+                head: [['Condomínio', 'Descrição', 'Qtd', 'Valor (R$)']],
+                body: data.items.map(i => [i.condominio, i.peca, i.qtde, parseFloat(i.valorUnitario).toLocaleString('pt-BR')]),
+                theme: 'striped',
+                headStyles: { fillColor: [13, 148, 136] }
+            });
+
+            const finalY = doc.lastAutoTable.finalY + 10;
+            doc.setFont("helvetica", "bold");
+            doc.text(`TOTAL GERAL: R$ ${data.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`, 140, finalY);
+            
+            doc.save(`Torres_${data.docNumber}.pdf`);
+        }
+
+        // Init
+        router.go('home');
+    </script>
+</body>
+</html>
