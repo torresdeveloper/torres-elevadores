@@ -10,7 +10,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
     <style>
         body { font-family: 'Montserrat', sans-serif; background-color: #f8fafc; color: #1e293b; }
         .app-card { background: #ffffff; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
@@ -33,37 +35,51 @@
         </div>
     </header>
 
-    <main id="app-content" class="px-5 py-6 space-y-5"></main>
+    <main id="app-content" class="px-5 py-6 space-y-5">
+        </main>
 
     <nav class="bottom-nav px-10 py-4 flex justify-between items-center">
-        <button onclick="router.go('home')" class="nav-item" id="nav-home"><i data-lucide="home"></i><span>Início</span></button>
-        <button onclick="handleFabClick()" class="fab-button"><i data-lucide="plus"></i></button>
-        <button onclick="router.go('history')" class="nav-item" id="nav-history"><i data-lucide="list"></i><span>Arquivo</span></button>
+        <button onclick="router.go('home')" class="nav-item" id="nav-home">
+            <i data-lucide="home"></i><span>Início</span>
+        </button>
+        <button onclick="handleFabClick()" class="fab-button">
+            <i data-lucide="plus"></i>
+        </button>
+        <button onclick="router.go('history')" class="nav-item" id="nav-history">
+            <i data-lucide="list"></i><span>Arquivo</span>
+        </button>
     </nav>
 
     <div id="app-toast" class="fixed bottom-28 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-xl shadow-xl opacity-0 transition-opacity z-[200] text-xs font-bold pointer-events-none text-center min-w-[200px]"></div>
 
     <script>
-        // --- CONFIGURAÇÃO SUPABASE (Mude aqui quando tiver as chaves) ---
-        const SB_URL = 'https://pkxvkltyjicjifktozju.supabase.co'; 
-        const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBreHZrbHR5amljamlma3Rvemp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExMDI5MDQsImV4cCI6MjA4NjY3ODkwNH0.s-ooeRg2iV7TDO8uLIjt658d5nE4u2E2dEq_8RTUIPY'; 
-        let supabaseClient = null;
+        // ==========================================
+        // CONFIGURAÇÃO SUPABASE - INSIRA SEUS DADOS AQUI
+        // ==========================================
+        const SUPABASE_URL = 'https://pkxvkltyjicjifktozju.supabase.co'; // Cole a URL aqui
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBreHZrbHR5amljamlma3Rvemp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExMDI5MDQsImV4cCI6MjA4NjY3ODkwNH0.s-ooeRg2iV7TDO8uLIjt658d5nE4u2E2dEq_8RTUIPY'; // Cole a Chave aqui
+        
+        let dbClient = null;
 
-        // Tenta inicializar apenas se houver dados
-        try {
-            if (SB_URL && SB_KEY && window.supabase) {
-                supabaseClient = window.supabase.createClient(SB_URL, SB_KEY);
+        // Inicialização Segura do Supabase
+        if (SUPABASE_URL && SUPABASE_KEY) {
+            try {
+                dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            } catch (err) {
+                console.error("Falha ao iniciar Supabase:", err);
             }
-        } catch (e) { console.error("Erro Supabase:", e); }
+        }
 
-        const DB_KEY = 'torres_v14_db';
-        const DRAFT_KEY = 'torres_v14_draft';
-        const SERIAL_KEY = 'torres_v14_serial';
+        // --- Variáveis de Estado ---
+        const DB_KEY = 'torres_v15_db';
+        const DRAFT_KEY = 'torres_v15_draft';
+        const SERIAL_KEY = 'torres_v15_serial';
 
         let state = JSON.parse(localStorage.getItem(DRAFT_KEY)) || { 
             currentItems: [], total: 0, docType: 'FATURAR', docNumber: '' 
         };
 
+        // --- Funções Auxiliares ---
         const toast = (msg) => {
             const t = document.getElementById('app-toast');
             t.innerText = msg; t.style.opacity = '1';
@@ -71,7 +87,7 @@
         };
 
         const getHistory = () => JSON.parse(localStorage.getItem(DB_KEY) || '[]');
-        
+
         window.syncData = () => {
             state.total = state.currentItems.reduce((acc, curr) => acc + (parseFloat(curr.valorUnitario) || 0), 0);
             const el = document.getElementById('editor-total');
@@ -79,6 +95,7 @@
             localStorage.setItem(DRAFT_KEY, JSON.stringify(state));
         };
 
+        // --- Roteador de Telas ---
         const router = {
             go(page, params = null) {
                 const content = document.getElementById('app-content');
@@ -91,22 +108,24 @@
                 else if(page === 'editor') this.renderEditor();
                 else if(page === 'history') this.renderHistory();
                 
-                lucide.createIcons();
+                if(window.lucide) lucide.createIcons();
             },
 
             renderHome() {
                 const history = getHistory();
                 document.getElementById('app-content').innerHTML = `
                     <div class="app-card p-6 bg-slate-900 text-white">
-                        <p class="text-[10px] font-bold text-teal-400 uppercase mb-1">Total em Caixa</p>
-                        <h2 class="text-2xl font-black">R$ ${history.reduce((a,b)=>a+b.total,0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</h2>
+                        <p class="text-[10px] font-bold text-teal-400 uppercase mb-1 text-center">Volume Total Processado</p>
+                        <h2 class="text-2xl font-black text-center">R$ ${history.reduce((a,b)=>a+b.total,0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</h2>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
-                        <button onclick="router.go('create')" class="app-card p-6 flex flex-col items-center gap-2">
-                            <i data-lucide="file-up" class="text-teal-600"></i><span class="text-[10px] font-bold uppercase">Importar Excel</span>
+                        <button onclick="router.go('create')" class="app-card p-6 flex flex-col items-center gap-2 active:bg-slate-50">
+                            <i data-lucide="file-up" class="text-teal-600"></i>
+                            <span class="text-[10px] font-bold uppercase">Importar Excel</span>
                         </button>
-                        <button onclick="startManual()" class="app-card p-6 flex flex-col items-center gap-2">
-                            <i data-lucide="edit-3" class="text-slate-600"></i><span class="text-[10px] font-bold uppercase">Manual</span>
+                        <button onclick="startManual()" class="app-card p-6 flex flex-col items-center gap-2 active:bg-slate-50">
+                            <i data-lucide="edit-3" class="text-slate-600"></i>
+                            <span class="text-[10px] font-bold uppercase">Novo Manual</span>
                         </button>
                     </div>
                 `;
@@ -116,9 +135,9 @@
                 document.getElementById('app-content').innerHTML = `
                     <div class="app-card p-10 text-center space-y-6">
                         <div class="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto text-teal-600"><i data-lucide="upload"></i></div>
-                        <h3 class="font-bold text-xs uppercase tracking-widest">Selecione a Planilha</h3>
+                        <h3 class="font-bold text-xs uppercase">Selecione a Planilha</h3>
                         <input type="file" id="f-in" class="hidden" accept=".xlsx" onchange="handleFileUpload(event)">
-                        <button onclick="document.getElementById('f-in').click()" class="w-full py-4 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase">Procurar Arquivo</button>
+                        <button onclick="document.getElementById('f-in').click()" class="w-full py-4 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase">Carregar XLSX</button>
                     </div>
                 `;
             },
@@ -128,25 +147,24 @@
                 document.getElementById('app-content').innerHTML = `
                     <div class="flex justify-between items-center mb-4 px-1">
                         <h2 class="font-black text-sm uppercase">Orçamento #${state.docNumber}</h2>
-                        <button onclick="state.currentItems=[];window.syncData();router.go('home')" class="text-red-500 font-bold text-[10px] uppercase">Cancelar</button>
+                        <button onclick="clearCurrent()" class="text-red-500 font-bold text-[10px] uppercase">Apagar</button>
                     </div>
                     <div class="space-y-4 pb-48">
                         ${state.currentItems.map((item, idx) => `
                             <div class="app-card p-4 space-y-3 border-l-4 border-teal-500">
-                                <input type="text" class="modern-input font-bold text-xs uppercase" placeholder="Condomínio" value="${item.condominio}" oninput="state.currentItems[${idx}].condominio=this.value.toUpperCase();window.syncData()">
-                                <textarea class="modern-input text-[11px] uppercase" placeholder="Peça/Serviço" oninput="state.currentItems[${idx}].peca=this.value.toUpperCase();window.syncData()">${item.peca}</textarea>
+                                <input type="text" class="modern-input font-bold text-xs uppercase" placeholder="Condomínio" value="${item.condominio}" oninput="updateItem(${idx}, 'condominio', this.value)">
+                                <textarea class="modern-input text-[11px] uppercase" placeholder="Peça/Serviço" oninput="updateItem(${idx}, 'peca', this.value)">${item.peca}</textarea>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <div class="flex flex-col"><label class="text-[8px] font-bold text-slate-400 px-1">VALOR (R$)</label>
-                                    <input type="number" class="modern-input font-bold" value="${item.valorUnitario}" oninput="state.currentItems[${idx}].valorUnitario=this.value;window.syncData()"></div>
-                                    <button onclick="state.currentItems.splice(${idx},1);window.syncData();router.renderEditor()" class="text-slate-300 self-end py-2 text-[10px] font-bold">REMOVER</button>
+                                    <input type="number" class="modern-input font-bold" value="${item.valorUnitario}" oninput="updateItem(${idx}, 'valorUnitario', this.value)">
+                                    <button onclick="removeItem(${idx})" class="text-slate-400 text-[10px] font-bold uppercase">Remover</button>
                                 </div>
                             </div>
                         `).join('')}
                         <button onclick="addItem()" class="w-full py-4 border-2 border-dashed rounded-xl text-[10px] font-black uppercase text-slate-400">+ Adicionar Item</button>
                     </div>
-                    <div class="fixed bottom-0 left-0 w-full p-6 bg-white border-t border-slate-100 z-[110] shadow-2xl">
-                        <div class="flex justify-between items-center mb-4"><span class="font-bold text-slate-400 text-xs">TOTAL GERAL</span><span id="editor-total" class="font-black text-xl text-slate-900">R$ 0,00</span></div>
-                        <button onclick="finalize()" class="w-full py-4 bg-teal-600 text-white rounded-xl font-black text-xs uppercase">Finalizar e Gerar PDF</button>
+                    <div class="fixed bottom-0 left-0 w-full p-6 bg-white border-t z-[110] shadow-2xl">
+                        <div class="flex justify-between items-center mb-4"><span class="font-bold text-slate-400 text-xs">TOTAL</span><span id="editor-total" class="font-black text-xl text-slate-900">R$ 0,00</span></div>
+                        <button onclick="finalize()" class="w-full py-4 bg-teal-600 text-white rounded-xl font-black text-xs uppercase">Salvar Orçamento</button>
                     </div>
                 `;
                 window.syncData();
@@ -155,18 +173,39 @@
             renderHistory() {
                 const history = getHistory();
                 document.getElementById('app-content').innerHTML = `
-                    <div class="flex justify-between items-center mb-4 px-1"><h2 class="font-black text-[10px] uppercase text-slate-400 tracking-widest">Histórico de Arquivos</h2></div>
+                    <div class="flex justify-between items-center mb-4 px-1"><h2 class="font-black text-[10px] uppercase text-slate-400 tracking-widest">Histórico Local</h2></div>
                     <div class="space-y-3">
                         ${history.map(h => `
                             <div class="app-card p-4 flex justify-between items-center">
                                 <div><p class="font-bold text-sm">#${h.docNumber}</p><p class="text-[8px] font-bold text-slate-400 uppercase">${new Date(h.date).toLocaleDateString()}</p></div>
                                 <p class="font-black text-xs text-teal-600">R$ ${h.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</p>
                             </div>
-                        `).join('') || '<div class="py-20 text-center opacity-30 font-bold text-xs">VAZIO</div>'}
+                        `).join('') || '<div class="py-20 text-center opacity-30 font-bold text-xs uppercase tracking-tighter">Nenhum registro encontrado</div>'}
                     </div>
                 `;
             }
         };
+
+        // --- Funções de Ação ---
+        function updateItem(idx, field, val) {
+            state.currentItems[idx][field] = field === 'valorUnitario' ? val : val.toUpperCase();
+            window.syncData();
+        }
+
+        function removeItem(idx) {
+            state.currentItems.splice(idx, 1);
+            router.renderEditor();
+            window.syncData();
+        }
+
+        function clearCurrent() {
+            if(confirm("Deseja apagar este orçamento?")) {
+                state.currentItems = [];
+                state.docNumber = '';
+                window.syncData();
+                router.go('home');
+            }
+        }
 
         function handleFileUpload(e) {
             const file = e.target.files[0];
@@ -188,7 +227,7 @@
                     state.currentItems = items;
                     window.syncData();
                     router.go('editor');
-                    toast("PLANILHA IMPORTADA!");
+                    toast("PLANILHA CARREGADA!");
                 }
             };
             reader.readAsArrayBuffer(file);
@@ -197,22 +236,34 @@
         async function finalize() {
             if(state.currentItems.length === 0) return toast("ADICIONE ITENS!");
             
-            const finalData = {...state, id: Date.now(), date: new Date().toISOString()};
-            const h = getHistory(); h.unshift(finalData);
-            
+            const finalData = {
+                id: Date.now(),
+                docNumber: state.docNumber,
+                total: state.total,
+                items: state.currentItems,
+                date: new Date().toISOString()
+            };
+
+            const h = getHistory(); 
+            h.unshift(finalData);
             localStorage.setItem(DB_KEY, JSON.stringify(h));
             localStorage.setItem(SERIAL_KEY, state.docNumber);
             
-            if(supabaseClient) {
+            // Tenta enviar para Supabase se configurado
+            if(dbClient) {
                 try {
-                    await supabaseClient.from('orcamentos').insert([{
-                        doc_number: String(state.docNumber), total: state.total, data_json: state.currentItems
+                    await dbClient.from('orcamentos').insert([{
+                        doc_number: String(state.docNumber), 
+                        total: state.total, 
+                        data: state.currentItems
                     }]);
-                } catch(e) { console.warn("Erro ao enviar nuvem", e); }
+                    toast("SALVO NA NUVEM!");
+                } catch(err) { console.error("Erro nuvem:", err); }
             }
             
-            toast("ORÇAMENTO SALVO!");
+            toast("ORÇAMENTO CONCLUÍDO!");
             state.currentItems = [];
+            state.docNumber = '';
             localStorage.removeItem(DRAFT_KEY);
             setTimeout(() => router.go('home'), 1000);
         }
@@ -221,7 +272,10 @@
         function addItem() { state.currentItems.push({ condominio: 'CONDOMÍNIO', peca: 'SERVIÇO', valorUnitario: 0 }); router.renderEditor(); }
         function handleFabClick() { if(state.currentItems.length > 0) router.go('editor'); else startManual(); }
 
-        window.onload = () => router.go('home');
+        // Inicialização Final
+        window.onload = () => {
+            router.go('home');
+        };
     </script>
 </body>
 </html>
