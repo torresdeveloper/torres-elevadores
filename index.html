@@ -1,156 +1,258 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Sistema de Orçamentos</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A&T Service - Sistema</title>
 
-<script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
-<script>
-  // ===============================
-  // CONFIGURE AQUI
-  // ===============================
-  const SUPABASE_URL = "https://pkxvkltyjicjifktozju.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBreHZrbHR5amljamlma3Rvemp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzExMDI5MDQsImV4cCI6MjA4NjY3ODkwNH0.s-ooeRg2iV7TDO8uLIjt658d5nE4u2E2dEq_8RTUIPY";
-
-  const supabase = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY
-  );
-
-  const TABLE = "orcamentos";
-</script>
-
-</head>
-<body class="bg-gray-100 min-h-screen p-6">
-
-<div class="max-w-4xl mx-auto bg-white shadow-xl rounded-2xl p-6">
-
-<h1 class="text-2xl font-bold mb-4">Sistema de Orçamentos</h1>
-
-<div class="grid grid-cols-2 gap-4 mb-4">
-  <input id="docNumber" class="border p-2 rounded" placeholder="Número Documento">
-  <input id="docType" class="border p-2 rounded" placeholder="Tipo Documento">
-  <input id="serviceType" class="border p-2 rounded col-span-2" placeholder="Tipo Serviço">
-  <input id="total" type="number" class="border p-2 rounded col-span-2" placeholder="Total">
-</div>
-
-<button onclick="salvar()" class="bg-blue-600 text-white px-4 py-2 rounded-lg">
-Salvar
-</button>
-
-<hr class="my-6">
-
-<h2 class="text-xl font-semibold mb-4">Histórico</h2>
-
-<div id="lista"></div>
-
-</div>
-
-<script>
-
-// ===============================
-// SALVAR
-// ===============================
-async function salvar() {
-
-  const docNumber = document.getElementById("docNumber").value;
-  const docType = document.getElementById("docType").value;
-  const serviceType = document.getElementById("serviceType").value;
-  const total = document.getElementById("total").value;
-
-  const { error } = await supabase
-    .from(TABLE)
-    .insert([{
-      doc_number: docNumber,
-      doc_type: docType,
-      service_type: serviceType,
-      total: total
-    }]);
-
-  if(error){
-    alert("Erro ao salvar");
-    console.error(error);
-    return;
-  }
-
-  alert("Salvo com sucesso!");
-  limpar();
-  carregar();
+<style>
+body{
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:#f4f6f9;
 }
+header{
+  background:#0d6efd;
+  color:white;
+  padding:15px;
+  text-align:center;
+  font-size:18px;
+  font-weight:bold;
+}
+.container{
+  padding:15px;
+}
+.card{
+  background:white;
+  padding:15px;
+  border-radius:12px;
+  margin-bottom:15px;
+  box-shadow:0 4px 8px rgba(0,0,0,0.05);
+}
+input, select{
+  width:100%;
+  padding:10px;
+  margin-bottom:10px;
+  border-radius:8px;
+  border:1px solid #ddd;
+}
+button{
+  width:100%;
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  background:#0d6efd;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
+}
+button.secondary{
+  background:#6c757d;
+}
+.item{
+  padding:10px;
+  border-bottom:1px solid #eee;
+  cursor:pointer;
+}
+.total{
+  font-size:18px;
+  font-weight:bold;
+  text-align:right;
+}
+</style>
+</head>
+<body>
 
-// ===============================
-// LISTAR
-// ===============================
-async function carregar() {
+<header>A&T SERVICE</header>
 
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select("*")
-    .order("created_at", { ascending: false });
+<div class="container" id="app"></div>
 
-  if(error){
-    console.error(error);
-    return;
-  }
+<script>
+const SUPABASE_URL = "COLE_SUA_URL_AQUI";
+const SUPABASE_ANON_KEY = "COLE_SUA_ANON_KEY_AQUI";
 
-  const lista = document.getElementById("lista");
-  lista.innerHTML = "";
+const supabase = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
 
-  data.forEach(item => {
-    lista.innerHTML += `
-      <div class="border p-4 rounded mb-2 flex justify-between items-center">
-        <div>
-          <p><strong>${item.doc_number}</strong> - ${item.doc_type}</p>
-          <p>${item.service_type}</p>
-          <p class="text-green-600 font-bold">R$ ${item.total}</p>
-        </div>
-        <button onclick="excluir(${item.id})" class="bg-red-500 text-white px-3 py-1 rounded">
-          Excluir
-        </button>
+const TABLE_NAME = "orcamentos";
+
+let currentItems = [];
+
+const router = {
+  async home(){
+    document.getElementById("app").innerHTML = `
+      <div class="card">
+        <button onclick="router.new()">Novo Orçamento</button>
+      </div>
+      <div class="card">
+        <button class="secondary" onclick="router.history()">Histórico</button>
       </div>
     `;
-  });
-}
+  },
 
-// ===============================
-// EXCLUIR
-// ===============================
-async function excluir(id){
+  async new(){
+    currentItems = [];
+    renderForm();
+  },
 
-  if(!confirm("Deseja excluir?")) return;
+  async history(){
+    const { data } = await supabase
+      .from(TABLE_NAME)
+      .select("*")
+      .order("created_at",{ascending:false});
 
-  const { error } = await supabase
-    .from(TABLE)
-    .delete()
-    .eq("id", id);
+    let html = `<div class="card">`;
 
-  if(error){
-    console.error(error);
-    alert("Erro ao excluir");
-    return;
+    if(!data || data.length === 0){
+      html += `<p>Nenhum registro encontrado.</p>`;
+    } else {
+      data.forEach(d=>{
+        html += `
+          <div class="item" onclick="router.details(${d.id})">
+            Nº ${d.id} - ${d.data.cliente}
+          </div>
+        `;
+      });
+    }
+
+    html += `
+      </div>
+      <button onclick="router.home()">Voltar</button>
+    `;
+
+    document.getElementById("app").innerHTML = html;
+  },
+
+  async details(id){
+    const { data } = await supabase
+      .from(TABLE_NAME)
+      .select("*")
+      .eq("id",id)
+      .single();
+
+    if(!data) return;
+
+    const d = data.data;
+
+    let html = `
+      <div class="card">
+        <h3>Cliente: ${d.cliente}</h3>
+        <p>Data: ${d.data}</p>
+    `;
+
+    d.itens.forEach(i=>{
+      html += `<p>${i.nome} - R$ ${i.valor}</p>`;
+    });
+
+    html += `
+        <div class="total">Total: R$ ${d.total}</div>
+      </div>
+      <button onclick="generatePDF(${id})">Gerar PDF</button>
+      <button class="secondary" onclick="router.history()">Voltar</button>
+    `;
+
+    document.getElementById("app").innerHTML = html;
   }
+};
 
-  carregar();
+function renderForm(){
+  document.getElementById("app").innerHTML = `
+    <div class="card">
+      <input id="cliente" placeholder="Nome do Cliente">
+      <input id="descricao" placeholder="Descrição do Serviço">
+      <input id="valor" type="number" placeholder="Valor">
+      <button onclick="addItem()">Adicionar Item</button>
+    </div>
+
+    <div class="card" id="itens"></div>
+
+    <div class="card">
+      <div class="total" id="total">Total: R$ 0</div>
+      <button onclick="finalizar()">Finalizar</button>
+      <button class="secondary" onclick="router.home()">Cancelar</button>
+    </div>
+  `;
 }
 
-// ===============================
-// LIMPAR CAMPOS
-// ===============================
-function limpar(){
-  document.getElementById("docNumber").value = "";
-  document.getElementById("docType").value = "";
-  document.getElementById("serviceType").value = "";
-  document.getElementById("total").value = "";
+function addItem(){
+  const nome = document.getElementById("descricao").value;
+  const valor = parseFloat(document.getElementById("valor").value);
+
+  if(!nome || !valor) return;
+
+  currentItems.push({nome,valor});
+  updateItems();
+
+  document.getElementById("descricao").value="";
+  document.getElementById("valor").value="";
 }
 
-// ===============================
-// INIT
-// ===============================
-carregar();
+function updateItems(){
+  let html="";
+  let total=0;
 
+  currentItems.forEach(i=>{
+    total+=i.valor;
+    html+=`<p>${i.nome} - R$ ${i.valor}</p>`;
+  });
+
+  document.getElementById("itens").innerHTML = html;
+  document.getElementById("total").innerText = "Total: R$ "+total;
+}
+
+async function finalizar(){
+  const cliente = document.getElementById("cliente").value;
+  if(!cliente || currentItems.length===0) return;
+
+  const total = currentItems.reduce((a,b)=>a+b.valor,0);
+  const id = Date.now();
+
+  const registro = {
+    id,
+    cliente,
+    data: new Date().toLocaleDateString(),
+    itens: currentItems,
+    total
+  };
+
+  await supabase.from(TABLE_NAME).insert([{id,data:registro}]);
+
+  router.home();
+}
+
+async function generatePDF(id){
+  const { data } = await supabase
+    .from(TABLE_NAME)
+    .select("*")
+    .eq("id",id)
+    .single();
+
+  const d = data.data;
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  doc.text("A&T SERVICE", 10, 10);
+  doc.text("Cliente: "+d.cliente,10,20);
+  doc.text("Data: "+d.data,10,30);
+
+  let y=40;
+  d.itens.forEach(i=>{
+    doc.text(i.nome+" - R$ "+i.valor,10,y);
+    y+=10;
+  });
+
+  doc.text("Total: R$ "+d.total,10,y+10);
+
+  doc.save("orcamento_"+id+".pdf");
+}
+
+router.home();
 </script>
 
 </body>
