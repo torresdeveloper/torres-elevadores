@@ -3,123 +3,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Torres Elevadores | Gestão de Orçamentos</title>
+    <title>Torres Elevadores | Gestão</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Montserrat', sans-serif; background-color: #f8fafc; }
-        .app-card { background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; }
+        body { font-family: 'Montserrat', sans-serif; background-color: #f1f5f9; padding-bottom: 180px; }
+        .app-card { background: #fff; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 1.5rem; position: relative; overflow: hidden; }
         .field-label { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block; }
-        .modern-input { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 10px; width: 100%; font-size: 14px; }
-        .bottom-nav { background: #fff; border-top: 1px solid #e2e8f0; position: fixed; bottom: 0; width: 100%; padding: 15px; }
+        .modern-input { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 10px; width: 100%; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+        .modern-input:focus { border-color: #0d9488; outline: none; background: #f0fdfa; }
+        .total-panel { position: fixed; bottom: 0; left: 0; width: 100%; background: #0f172a; color: white; padding: 20px; z-index: 100; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -10px 25px rgba(0,0,0,0.1); }
     </style>
 </head>
-<body class="pb-32">
+<body>
 
-    <header class="px-6 py-8 bg-white border-b flex justify-between items-center">
+    <header class="px-6 py-10 bg-white border-b flex justify-between items-center">
         <div>
-            <h1 class="text-xl font-extrabold">Torres Elevadores</h1>
-            <p class="text-[9px] text-teal-600 font-bold uppercase">Importação de Dados Ativa</p>
+            <h1 class="text-2xl font-black text-slate-900">Torres Elevadores</h1>
+            <p class="text-[10px] text-teal-600 font-bold uppercase tracking-widest">Editor de Orçamentos</p>
         </div>
-        <button onclick="loadContractData()" class="bg-teal-600 text-white px-4 py-2 rounded-lg text-xs font-bold">
-            CARREGAR CONTRATO 08-2026
-        </button>
+        <div class="bg-slate-100 p-3 rounded-xl text-slate-400">
+            <i data-lucide="settings"></i>
+        </div>
     </header>
 
-    <main id="app-content" class="px-5 py-6"></main>
+    <main class="px-5 py-6">
+        <div class="flex justify-between items-end mb-6">
+            <div>
+                <label class="field-label">Nº do Orçamento</label>
+                <input type="text" id="doc-number" class="text-xl font-black text-teal-600 bg-transparent outline-none border-b-2 border-teal-200 w-32" value="08-2026">
+            </div>
+            <button onclick="addItem()" class="bg-teal-600 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase">
+                + Novo Item
+            </button>
+        </div>
 
-    <nav class="bottom-nav flex justify-around items-center">
-        <button onclick="router.go('home')" class="flex flex-col items-center text-slate-400">
-            <i data-lucide="home"></i>
-            <span class="text-[10px] font-bold">Início</span>
-        </button>
-        <button onclick="router.go('editor')" class="bg-teal-600 text-white p-4 rounded-full -mt-12 shadow-lg">
-            <i data-lucide="plus"></i>
-        </button>
-        <button onclick="router.go('history')" class="flex flex-col items-center text-slate-400">
-            <i data-lucide="archive"></i>
-            <span class="text-[10px] font-bold">Arquivo</span>
-        </button>
-    </nav>
+        <div id="items-container">
+            </div>
+    </main>
+
+    <div class="total-panel">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <span class="text-[10px] font-bold uppercase text-slate-400 block">Total Geral</span>
+                <span id="display-total" class="text-2xl font-black text-teal-400">R$ 0,00</span>
+            </div>
+            <button onclick="generatePDF()" class="bg-teal-500 text-white px-6 py-3 rounded-xl font-black text-xs uppercase shadow-lg shadow-teal-900/20">
+                Gerar PDF
+            </button>
+        </div>
+    </div>
 
     <script>
-        // Dados extraídos do arquivo CONTRATO_08-2026.pdf
-        const contractData = [
-            { os: "305999", elevador: "86079", condominio: "CONDOMINIO GRAN PRIX", peca: "NYLON COREDIÇA GUIA T3", qtde: 4, valorUnitario: 35.01 },
-            { os: "310666", elevador: "79533", condominio: "HOLIDAY INN MANAUS", peca: "INVERSOR DE FREQ 3,5A 200-240V", qtde: 1, valorUnitario: 70.02 },
-            { os: "314789", elevador: "40641", condominio: "MONDRIAN CD ED", peca: "CHAVE FIM-CURSO 1NA+1NF", qtde: 1, valorUnitario: 35.01 },
-            { os: "315957", elevador: "171363", condominio: "RESIDENCIAL PRIME ARENA", peca: "CORREDICA DESLIZANTE GUIA 9MM", qtde: 4, valorUnitario: 50.00 }
-            // ... outros itens podem ser adicionados aqui
+        // BASE DE EXEMPLO (Dados do PDF)
+        let items = [
+            { os: "305999", equip: "86079", condominio: "CONDOMINIO GRAN PRIX", peca: "NYLON COREDIÇA GUIA T3", qtde: 4, valor: 35.01 },
+            { os: "310666", equip: "79533", condominio: "HOLIDAY INN MANAUS", peca: "INVERSOR DE FREQ 3,5A 200-240V", qtde: 1, valor: 70.02 },
+            { os: "314789", equip: "40641", condominio: "MONDRIAN CD ED", peca: "CHAVE FIM-CURSO 1NA+1NF", qtde: 1, valor: 35.01 }
         ];
 
-        let state = { currentItems: [], total: 0, docNumber: '08-2026' };
+        function renderItems() {
+            const container = document.getElementById('items-container');
+            container.innerHTML = '';
+            
+            items.forEach((item, index) => {
+                const subtotal = item.qtde * item.valor;
+                container.innerHTML += `
+                    <div class="app-card p-5 border-l-8 border-teal-500">
+                        <button onclick="removeItem(${index})" class="absolute top-4 right-4 text-slate-300 hover:text-red-400">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                        
+                        <div class="grid grid-cols-2 gap-3 mb-4">
+                            <div>
+                                <label class="field-label">O.S. (Ordem de Serviço)</label>
+                                <input type="text" class="modern-input" value="${item.os}" oninput="updateItem(${index}, 'os', this.value)">
+                            </div>
+                            <div>
+                                <label class="field-label">Equipamento (Nº)</label>
+                                <input type="text" class="modern-input" value="${item.equip}" oninput="updateItem(${index}, 'equip', this.value)">
+                            </div>
+                        </div>
 
-        function loadContractData() {
-            state.currentItems = contractData;
-            router.go('editor');
-            alert("Dados do Contrato 08-2026 carregados!");
+                        <div class="mb-4">
+                            <label class="field-label">Nome do Condomínio</label>
+                            <input type="text" class="modern-input uppercase" value="${item.condominio}" oninput="updateItem(${index}, 'condominio', this.value)">
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="field-label">Descrição da Peça / Serviço</label>
+                            <textarea class="modern-input uppercase text-xs" rows="2" oninput="updateItem(${index}, 'peca', this.value)">${item.peca}</textarea>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="field-label">Qtde</label>
+                                <input type="number" class="modern-input" value="${item.qtde}" oninput="updateItem(${index}, 'qtde', this.value)">
+                            </div>
+                            <div>
+                                <label class="field-label">V. Unit (R$)</label>
+                                <input type="number" step="0.01" class="modern-input" value="${item.valor}" oninput="updateItem(${index}, 'valor', this.value)">
+                            </div>
+                            <div>
+                                <label class="field-label text-teal-600">Subtotal</label>
+                                <div class="p-2 font-black text-slate-700">R$ ${subtotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            calculateTotal();
+            lucide.createIcons();
         }
 
-        const calculateTotal = () => {
-            state.total = state.currentItems.reduce((acc, item) => acc + (item.qtde * item.valorUnitario), 0);
-            const el = document.getElementById('display-total');
-            if(el) el.innerText = `R$ ${state.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-        };
+        function updateItem(index, field, value) {
+            items[index][field] = (field === 'qtde' || field === 'valor') ? parseFloat(value) || 0 : value;
+            calculateTotal();
+            // Atualiza apenas o subtotal visualmente para não perder o foco do input
+            const subtotal = items[index].qtde * items[index].valor;
+            renderItems(); // Re-renderiza para atualizar os cálculos
+        }
 
-        const router = {
-            go(page) {
-                const content = document.getElementById('app-content');
-                content.innerHTML = '';
-                if(page === 'home') this.renderHome();
-                if(page === 'editor') this.renderEditor();
-                lucide.createIcons();
-            },
-            renderHome() {
-                document.getElementById('app-content').innerHTML = `
-                    <div class="app-card p-6 bg-slate-900 text-white mb-6">
-                        <p class="text-[10px] font-bold text-teal-400 uppercase">Status do Sistema</p>
-                        <h2 class="text-xl font-black">Pronto para Processar</h2>
-                    </div>
-                `;
-            },
-            renderEditor() {
-                document.getElementById('app-content').innerHTML = `
-                    <div class="mb-6">
-                        <span class="field-label">Documento</span>
-                        <h2 class="text-xl font-black text-teal-600">#${state.docNumber}</h2>
-                    </div>
-                    <div class="space-y-4">
-                        ${state.currentItems.map((item, idx) => `
-                            <div class="app-card p-4 border-l-4 border-teal-500">
-                                <div class="grid grid-cols-2 gap-2 mb-2">
-                                    <div><label class="field-label">O.S.</label><input class="modern-input" value="${item.os}"></div>
-                                    <div><label class="field-label">Equip.</label><input class="modern-input" value="${item.elevador}"></div>
-                                </div>
-                                <label class="field-label">Condomínio</label>
-                                <input class="modern-input mb-2 uppercase" value="${item.condominio}">
-                                <label class="field-label">Peça</label>
-                                <input class="modern-input mb-2 uppercase" value="${item.peca}">
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div><label class="field-label">Qtde</label><input type="number" class="modern-input" value="${item.qtde}"></div>
-                                    <div><label class="field-label">V. Unit (R$)</label><input type="number" class="modern-input" value="${item.valorUnitario}"></div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <div class="fixed bottom-20 left-0 w-full p-6 bg-white border-t flex justify-between items-center">
-                        <span class="text-xs font-bold text-slate-400">TOTAL</span>
-                        <span id="display-total" class="text-xl font-black">R$ 0,00</span>
-                    </div>
-                `;
-                calculateTotal();
-            }
-        };
+        function addItem() {
+            items.push({ os: "", equip: "", condominio: "", peca: "", qtde: 1, valor: 0 });
+            renderItems();
+        }
 
-        window.onload = () => router.go('home');
+        function removeItem(index) {
+            items.splice(index, 1);
+            renderItems();
+        }
+
+        function calculateTotal() {
+            const total = items.reduce((acc, item) => acc + (item.qtde * item.valor), 0);
+            document.getElementById('display-total').innerText = `R$ ${total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+        }
+
+        function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            // Lógica de PDF simplificada para exemplo
+            doc.setFontSize(18);
+            doc.text("Orçamento Torres Elevadores", 14, 20);
+            doc.setFontSize(12);
+            doc.text(`Nº: ${document.getElementById('doc-number').value}`, 14, 30);
+            
+            const tableData = items.map(i => [i.os, i.condominio, i.peca, i.qtde, i.valor.toFixed(2), (i.qtde * i.valor).toFixed(2)]);
+            doc.autoTable({
+                startY: 40,
+                head: [['O.S.', 'Condomínio', 'Peça', 'Qtde', 'Unit.', 'Total']],
+                body: tableData,
+            });
+            
+            doc.save(`Orcamento_${document.getElementById('doc-number').value}.pdf`);
+        }
+
+        window.onload = renderItems;
     </script>
 </body>
 </html>
