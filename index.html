@@ -1,259 +1,570 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>A&T Service - Sistema</title>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-<style>
-body{
-  margin:0;
-  font-family:Arial, sans-serif;
-  background:#f4f6f9;
-}
-header{
-  background:#0d6efd;
-  color:white;
-  padding:15px;
-  text-align:center;
-  font-size:18px;
-  font-weight:bold;
-}
-.container{
-  padding:15px;
-}
-.card{
-  background:white;
-  padding:15px;
-  border-radius:12px;
-  margin-bottom:15px;
-  box-shadow:0 4px 8px rgba(0,0,0,0.05);
-}
-input, select{
-  width:100%;
-  padding:10px;
-  margin-bottom:10px;
-  border-radius:8px;
-  border:1px solid #ddd;
-}
-button{
-  width:100%;
-  padding:12px;
-  border:none;
-  border-radius:10px;
-  background:#0d6efd;
-  color:white;
-  font-weight:bold;
-  cursor:pointer;
-}
-button.secondary{
-  background:#6c757d;
-}
-.item{
-  padding:10px;
-  border-bottom:1px solid #eee;
-  cursor:pointer;
-}
-.total{
-  font-size:18px;
-  font-weight:bold;
-  text-align:right;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Torres Elevadores | Gestão de Orçamentos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Montserrat', sans-serif; background-color: #f8fafc; color: #1e293b; -webkit-tap-highlight-color: transparent; }
+        .app-card { background: #ffffff; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        .modern-input { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; width: 100%; font-size: 14px; transition: all 0.2s; }
+        .modern-input:focus { border-color: #0d9488; outline: none; }
+        .bottom-nav { background: #ffffff; border-top: 1px solid #e2e8f0; position: fixed; bottom: 0; width: 100%; z-index: 100; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 10px; font-weight: 700; color: #94a3b8; background: none; border: none; padding: 4px; }
+        .nav-item.active { color: #0d9488; }
+        .fab-button { background: #0d9488; width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: white; margin-top: -28px; box-shadow: 0 8px 15px rgba(13, 148, 136, 0.3); border: none; }
+        .toggle-btn { flex: 1; padding: 12px 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; color: #64748b; }
+        .toggle-btn.active { background-color: #0d9488; color: white; border-color: #0d9488; }
+        .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
 </head>
-<body>
+<body class="pb-32">
+    <header class="px-6 pt-10 pb-6 bg-white border-b border-slate-100 flex justify-between items-center">
+        <div>
+            <h1 class="text-xl font-extrabold text-slate-900">Torres Elevadores</h1>
+            <p class="text-[9px] text-teal-600 font-bold uppercase tracking-wider">Base de Dados Integrada</p>
+        </div>
+        <div class="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center text-teal-400">
+            <i data-lucide="database" class="w-5 h-5"></i>
+        </div>
+    </header>
 
-<header>A&T SERVICE</header>
+    <main id="app-content" class="px-5 py-6 space-y-5"></main>
 
-<div class="container" id="app"></div>
+    <nav class="bottom-nav px-10 py-4 flex justify-between items-center safe-area-bottom">
+        <button onclick="router.go('home')" class="nav-item" id="nav-home">
+            <i data-lucide="home" class="w-6 h-6 mb-1"></i>
+            <span>Início</span>
+        </button>
+        <button onclick="handleFabClick()" class="fab-button">
+            <i data-lucide="plus" class="w-7 h-7"></i>
+        </button>
+        <button onclick="router.go('history')" class="nav-item" id="nav-history">
+            <i data-lucide="list" class="w-6 h-6 mb-1"></i>
+            <span>Arquivo</span>
+        </button>
+    </nav>
 
-<script>
-const SUPABASE_URL = "COLE_SUA_URL_AQUI";
-const SUPABASE_ANON_KEY = "COLE_SUA_ANON_KEY_AQUI";
+    <div id="app-toast" class="fixed bottom-28 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-xl shadow-xl opacity-0 transition-opacity z-[200] text-xs font-bold uppercase pointer-events-none"></div>
 
-const supabase = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
-);
+    <script>
+        // Configurações de Banco de Dados Local
+        const DB_KEY = 'torres_v12_history';
+        const DRAFT_KEY = 'torres_v12_active_session';
+        const COUNTER_KEY = 'torres_v12_serial';
+        const EMPRESA = {
+            cnpj: "52.019.285/0001-06",
+            email: "aetservicecorp@gmail.com",
+            tel: "(92) 99433-0340",
+            endereco: "Rua Menandro Tapajos, 5. Petrópolis."
+        };
+        const CLIENTE_PADRAO = "TK ELEVADORES";
 
-const TABLE_NAME = "orcamentos";
+        // Inicialização do Estado
+        let state = JSON.parse(localStorage.getItem(DRAFT_KEY)) || {
+            currentItems: [],
+            total: 0,
+            docType: 'FATURAR',
+            serviceType: 'TROCA DE PEÇAS',
+            docNumber: ''
+        };
 
-let currentItems = [];
+        // Funções de Persistência
+        const getHistory = () => JSON.parse(localStorage.getItem(DB_KEY) || '[]');
+        const saveToHistory = (entry) => {
+            const h = getHistory();
+            h.unshift(entry);
+            localStorage.setItem(DB_KEY, JSON.stringify(h));
+        };
+        const saveDraft = (data) => localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+        const clearDraft = () => localStorage.removeItem(DRAFT_KEY);
+        const getNextNumber = () => {
+            let current = parseInt(localStorage.getItem(COUNTER_KEY) || '1000');
+            return current + 1;
+        };
 
-const router = {
-  async home(){
-    document.getElementById("app").innerHTML = `
-      <div class="card">
-        <button onclick="router.new()">Novo Orçamento</button>
-      </div>
-      <div class="card">
-        <button class="secondary" onclick="router.history()">Histórico</button>
-      </div>
-    `;
-  },
+        // Sincronização
+        window.sync = () => {
+            state.total = state.currentItems.reduce((acc, curr) => acc + (parseFloat(curr.valorUnitario) || 0), 0);
+            const totalEl = document.getElementById('editor-total');
+            if (totalEl) {
+                totalEl.innerText = `R$ ${state.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+            }
+            saveDraft(state);
+        };
 
-  async new(){
-    currentItems = [];
-    renderForm();
-  },
+        // Router & Renderização
+        const router = {
+            go(page, params = null) {
+                const content = document.getElementById('app-content');
+                content.innerHTML = '';
+                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+                const activeNav = document.getElementById(`nav-${page}`);
+                if(activeNav) activeNav.classList.add('active');
 
-  async history(){
-    const { data } = await supabase
-      .from(TABLE_NAME)
-      .select("*")
-      .order("created_at",{ascending:false});
+                if(page === 'home') this.renderHome();
+                else if(page === 'create') this.renderCreate();
+                else if(page === 'editor') this.renderEditor();
+                else if(page === 'history') this.renderHistory();
+                else if(page === 'details') this.renderDetails(params);
 
-    let html = `<div class="card">`;
+                if(window.lucide) lucide.createIcons();
+                window.scrollTo(0,0);
+            },
 
-    if(!data || data.length === 0){
-      html += `<p>Nenhum registro encontrado.</p>`;
-    } else {
-      data.forEach(d=>{
-        html += `
-          <div class="item" onclick="router.details(${d.id})">
-            Nº ${d.id} - ${d.data.cliente}
-          </div>
-        `;
-      });
-    }
+            renderHome() {
+                const history = getHistory();
+                const hasActive = state.currentItems.length > 0;
+                const totalHistorico = history.reduce((a,b) => a + (b.total || 0), 0);
 
-    html += `
-      </div>
-      <button onclick="router.home()">Voltar</button>
-    `;
+                document.getElementById('app-content').innerHTML = `
+                    <div class="app-card p-6 bg-slate-900 text-white mb-6">
+                        <p class="text-[10px] font-bold text-teal-400 uppercase mb-1">Total em Histórico</p>
+                        <h2 class="text-2xl font-black">R$ ${totalHistorico.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</h2>
+                    </div>
 
-    document.getElementById("app").innerHTML = html;
-  },
+                    ${hasActive ? `
+                    <div class="app-card p-4 border-l-4 border-teal-500 flex justify-between items-center bg-teal-50 mb-6">
+                        <div>
+                            <p class="text-[10px] font-bold text-teal-600 uppercase">Dados em Memória</p>
+                            <p class="text-sm font-bold text-slate-800">Orçamento #${state.docNumber || 'Iniciado'}</p>
+                        </div>
+                        <button onclick="router.go('editor')" class="bg-teal-600 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase">Continuar</button>
+                    </div>` : ''}
 
-  async details(id){
-    const { data } = await supabase
-      .from(TABLE_NAME)
-      .select("*")
-      .eq("id",id)
-      .single();
+                    <div class="grid grid-cols-2 gap-4 mb-8">
+                        <button onclick="router.go('create')" class="app-card p-6 flex flex-col items-center gap-3 active:bg-slate-50">
+                            <i data-lucide="file-up" class="w-6 h-6 text-teal-600"></i>
+                            <span class="text-[10px] font-black uppercase">Importar Excel</span>
+                        </button>
+                        <button onclick="startManual()" class="app-card p-6 flex flex-col items-center gap-3 active:bg-slate-50">
+                            <i data-lucide="edit" class="w-6 h-6 text-slate-600"></i>
+                            <span class="text-[10px] font-black uppercase">Novo Manual</span>
+                        </button>
+                    </div>
 
-    if(!data) return;
+                    <div class="space-y-3">
+                        <h3 class="text-[10px] font-black uppercase text-slate-400 px-1">Últimos Orçamentos</h3>
+                        ${history.slice(0, 3).map(h => `
+                            <div onclick="router.go('details', ${h.id})" class="app-card p-4 flex justify-between items-center cursor-pointer">
+                                <div>
+                                    <p class="text-sm font-bold text-slate-900">#${h.docNumber}</p>
+                                    <p class="text-[8px] text-slate-400 font-bold uppercase">${h.docType} | ${new Date(h.date).toLocaleDateString()}</p>
+                                </div>
+                                <p class="text-xs font-black text-slate-900">R$ ${h.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</p>
+                            </div>
+                        `).join('') || '<p class="text-center py-10 text-slate-300 text-[10px] font-bold uppercase">Nenhum dado salvo no banco</p>'}
+                    </div>
+                `;
+            },
 
-    const d = data.data;
+            renderCreate() {
+                document.getElementById('app-content').innerHTML = `
+                    <button onclick="router.go('home')" class="mb-4 text-[9px] font-black text-slate-400 uppercase flex items-center gap-1"><i data-lucide="chevron-left" class="w-4 h-4"></i> Voltar</button>
+                    <div class="app-card p-10 flex flex-col items-center text-center space-y-6">
+                        <div class="w-16 h-16 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center">
+                            <i data-lucide="upload" class="w-8 h-8"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-black text-slate-900 uppercase text-xs tracking-widest">Importar Planilha</h3>
+                            <p class="text-[9px] text-slate-400 font-bold mt-2 uppercase">Os dados ficarão salvos automaticamente</p>
+                        </div>
+                        <input type="file" id="file-input" class="hidden" accept=".xlsx" onchange="handleFileUpload(event)">
+                        <button onclick="document.getElementById('file-input').click()" class="w-full py-4 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase">Selecionar Arquivo</button>
+                    </div>
+                `;
+            },
 
-    let html = `
-      <div class="card">
-        <h3>Cliente: ${d.cliente}</h3>
-        <p>Data: ${d.data}</p>
-    `;
+            renderEditor() {
+                if(!state.docNumber) state.docNumber = getNextNumber();
+                document.getElementById('app-content').innerHTML = `
+                    <div class="flex items-center justify-between mb-4">
+                        <button onclick="router.go('home')" class="p-2 bg-white rounded-lg border border-slate-200"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+                        <div class="flex flex-col items-center">
+                            <label class="text-[8px] font-black text-slate-400 uppercase">Nº Orçamento</label>
+                            <input type="text" class="w-20 font-black text-teal-600 bg-transparent border-b border-teal-200 text-center focus:outline-none" value="${state.docNumber}" oninput="state.docNumber = this.value; window.sync();">
+                        </div>
+                        <button onclick="resetEditor()" class="p-2 bg-red-50 text-red-400 rounded-lg"><i data-lucide="trash" class="w-4 h-4"></i></button>
+                    </div>
 
-    d.itens.forEach(i=>{
-      html += `<p>${i.nome} - R$ ${i.valor}</p>`;
-    });
+                    <div class="space-y-6 pb-64">
+                        <div class="app-card p-5 space-y-4">
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="setDocType('CONTRATO')" class="toggle-btn ${state.docType === 'CONTRATO' ? 'active' : ''}">Contrato</button>
+                                <button onclick="setDocType('FATURAR')" class="toggle-btn ${state.docType === 'FATURAR' ? 'active' : ''}">Faturar</button>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="setServiceType('TROCA DE PEÇAS')" class="toggle-btn ${state.serviceType === 'TROCA DE PEÇAS' ? 'active' : ''}">Peças</button>
+                                <button onclick="setServiceType('RIA')" class="toggle-btn ${state.serviceType === 'RIA' ? 'active' : ''}">RIA</button>
+                                <button onclick="setServiceType('DIVERSOS')" class="toggle-btn ${state.serviceType === 'DIVERSOS' ? 'active' : ''}">Outros</button>
+                            </div>
+                        </div>
 
-    html += `
-        <div class="total">Total: R$ ${d.total}</div>
-      </div>
-      <button onclick="generatePDF(${id})">Gerar PDF</button>
-      <button class="secondary" onclick="router.history()">Voltar</button>
-    `;
+                        <div id="items-container" class="space-y-4">
+                            ${state.currentItems.map((item, idx) => `
+                                <div class="app-card p-5 space-y-4 border-l-4 border-teal-500">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-[9px] font-black text-teal-600 tracking-widest">ITEM ${idx+1}</span>
+                                        <button onclick="removeItem(${idx})" class="text-slate-300"><i data-lucide="x" class="w-4 h-4"></i></button>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <input type="text" class="modern-input !text-xs font-bold" value="${item.os}" placeholder="O.S." oninput="state.currentItems[${idx}].os = this.value; window.sync();">
+                                        <input type="text" class="modern-input !text-xs" value="${item.elevador}" placeholder="Equipamento" oninput="state.currentItems[${idx}].elevador = this.value; window.sync();">
+                                    </div>
+                                    <input type="text" class="modern-input !text-xs uppercase font-bold" value="${item.condominio}" placeholder="Condomínio" oninput="state.currentItems[${idx}].condominio = this.value; window.sync();">
+                                    <textarea class="modern-input !text-xs uppercase" rows="2" placeholder="DESCRIÇÃO DA PEÇA" oninput="state.currentItems[${idx}].peca = this.value; window.sync();">${item.peca}</textarea>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <input type="text" class="modern-input !text-xs" value="${item.qtde}" placeholder="Qtd" oninput="state.currentItems[${idx}].qtde = this.value; window.sync();">
+                                        <input type="number" class="modern-input !text-xs font-bold" value="${item.valorUnitario}" placeholder="VALOR" oninput="state.currentItems[${idx}].valorUnitario = parseFloat(this.value) || 0; window.sync();">
+                                    </div>
+                                </div>
+                            `).join('')}
+                            <button onclick="addItem()" class="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-[9px] font-black text-slate-400 uppercase">+ Adicionar Item</button>
+                        </div>
+                    </div>
 
-    document.getElementById("app").innerHTML = html;
-  }
-};
+                    <div class="fixed bottom-0 left-0 w-full p-6 bg-white border-t border-slate-100 z-[110] shadow-2xl">
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-[9px] font-black text-slate-400 uppercase">Subtotal Atual</span>
+                            <span id="editor-total" class="text-xl font-black text-slate-900">R$ ${state.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button onclick="router.go('home')" class="py-4 bg-slate-100 text-slate-600 rounded-xl font-black text-[10px] uppercase">Menu</button>
+                            <button onclick="finalizeAndPrint()" class="py-4 bg-teal-600 text-white rounded-xl font-black text-[10px] uppercase">Finalizar PDF</button>
+                        </div>
+                    </div>
+                `;
+                lucide.createIcons();
+            },
 
-function renderForm(){
-  document.getElementById("app").innerHTML = `
-    <div class="card">
-      <input id="cliente" placeholder="Nome do Cliente">
-      <input id="descricao" placeholder="Descrição do Serviço">
-      <input id="valor" type="number" placeholder="Valor">
-      <button onclick="addItem()">Adicionar Item</button>
-    </div>
+            renderHistory() {
+                const history = getHistory();
+                document.getElementById('app-content').innerHTML = `
+                    <div class="flex justify-between items-center mb-4 px-1">
+                        <h2 class="font-black text-[10px] uppercase text-slate-400">Banco de Orçamentos</h2>
+                        <button onclick="clearHistory()" class="text-[8px] font-bold text-red-400 uppercase">Limpar Tudo</button>
+                    </div>
+                    <div class="space-y-3 pb-8">
+                        ${history.map(h => `
+                            <div class="app-card p-4 flex justify-between items-center">
+                                <div onclick="router.go('details', ${h.id})" class="flex-1 truncate cursor-pointer">
+                                    <p class="font-bold text-sm text-slate-900">#${h.docNumber}</p>
+                                    <p class="text-[8px] font-bold text-slate-400 uppercase">${h.docType} | ${new Date(h.date).toLocaleDateString()}</p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="reissuePDF(${h.id})" class="p-2 bg-teal-50 text-teal-600 rounded-lg"><i data-lucide="download" class="w-4 h-4"></i></button>
+                                    <button onclick="deleteEntry(${h.id})" class="p-2 bg-red-50 text-red-400 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                </div>
+                            </div>
+                        `).join('') || '<div class="py-20 text-center opacity-20 font-black text-xs uppercase tracking-widest">Arquivo Vazio</div>'}
+                    </div>
+                `;
+            },
 
-    <div class="card" id="itens"></div>
+            renderDetails(id) {
+                const item = getHistory().find(x => x.id == id);
+                if(!item) return this.go('home');
 
-    <div class="card">
-      <div class="total" id="total">Total: R$ 0</div>
-      <button onclick="finalizar()">Finalizar</button>
-      <button class="secondary" onclick="router.home()">Cancelar</button>
-    </div>
-  `;
-}
+                document.getElementById('app-content').innerHTML = `
+                    <button onclick="router.go('history')" class="mb-4 text-[9px] font-black text-slate-400 uppercase flex items-center gap-1"><i data-lucide="chevron-left" class="w-4 h-4"></i> Voltar ao Arquivo</button>
+                    <div class="app-card p-6 space-y-6">
+                        <div class="border-b border-slate-100 pb-4 flex justify-between items-start">
+                            <div>
+                                <h3 class="text-lg font-black text-slate-900">#${item.docNumber}</h3>
+                                <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">${item.serviceType}</p>
+                                <p class="text-[8px] text-slate-400 mt-1">${new Date(item.date).toLocaleString()}</p>
+                            </div>
+                            <span class="px-3 py-1 bg-teal-50 text-teal-600 text-[8px] font-black rounded-lg uppercase">${item.docType}</span>
+                        </div>
+                        <div class="space-y-3">
+                            ${item.items.map((i, idx) => `
+                                <div class="text-[10px] bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                    <div class="flex justify-between font-bold mb-1">
+                                        <span class="text-teal-600 uppercase">Item ${idx+1}</span>
+                                        <span>R$ ${parseFloat(i.valorUnitario).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                                    </div>
+                                    <p class="font-bold uppercase text-slate-800">${i.condominio}</p>
+                                    <p class="text-slate-500 uppercase mt-1 leading-relaxed">${i.peca}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <div class="pt-4 flex justify-between items-center border-t border-slate-100">
+                            <span class="text-[9px] font-black uppercase text-slate-400">Valor Final</span>
+                            <span class="text-xl font-black text-slate-900">R$ ${item.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                        </div>
+                    </div>
+                    <button onclick="reissuePDF(${id})" class="w-full mt-4 py-4 bg-teal-600 text-white rounded-xl font-black text-[10px] uppercase flex items-center justify-center gap-3 shadow-lg">
+                        <i data-lucide="file-text" class="w-4 h-4"></i> Baixar Cópia PDF
+                    </button>
+                `;
+            }
+        };
 
-function addItem(){
-  const nome = document.getElementById("descricao").value;
-  const valor = parseFloat(document.getElementById("valor").value);
+        // Funções Globais
+        window.handleFabClick = function() {
+            if(state.currentItems.length > 0) router.go('editor');
+            else startManual();
+        };
 
-  if(!nome || !valor) return;
+        window.startManual = function() {
+            state = {
+                currentItems: [],
+                total: 0,
+                docType: 'FATURAR',
+                serviceType: 'TROCA DE PEÇAS',
+                docNumber: getNextNumber()
+            };
+            addItem();
+            router.go('editor');
+            window.sync();
+        };
 
-  currentItems.push({nome,valor});
-  updateItems();
+        window.addItem = function() {
+            state.currentItems.push({
+                os: '-',
+                elevador: 'GERAL',
+                peca: 'SERVIÇO TÉCNICO',
+                qtde: '1',
+                valorUnitario: 0,
+                condominio: 'CONDOMÍNIO'
+            });
+            if(document.getElementById('items-container')) router.renderEditor();
+            window.sync();
+        };
 
-  document.getElementById("descricao").value="";
-  document.getElementById("valor").value="";
-}
+        window.removeItem = function(idx) {
+            state.currentItems.splice(idx, 1);
+            if(state.currentItems.length === 0) addItem();
+            router.renderEditor();
+            window.sync();
+        };
 
-function updateItems(){
-  let html="";
-  let total=0;
+        window.setDocType = function(t) {
+            state.docType = t;
+            router.renderEditor();
+            window.sync();
+        };
 
-  currentItems.forEach(i=>{
-    total+=i.valor;
-    html+=`<p>${i.nome} - R$ ${i.valor}</p>`;
-  });
+        window.setServiceType = function(t) {
+            state.serviceType = t;
+            router.renderEditor();
+            window.sync();
+        };
 
-  document.getElementById("itens").innerHTML = html;
-  document.getElementById("total").innerText = "Total: R$ "+total;
-}
+        window.resetEditor = function() {
+            if(confirm("Deseja apagar todos os itens desta sessão?")) {
+                clearDraft();
+                startManual();
+            }
+        };
 
-async function finalizar(){
-  const cliente = document.getElementById("cliente").value;
-  if(!cliente || currentItems.length===0) return;
+        window.finalizeAndPrint = function() {
+            if(state.currentItems.length === 0) return toast("Lista vazia");
+            const finalData = {
+                id: Date.now(),
+                items: JSON.parse(JSON.stringify(state.currentItems)),
+                total: state.total,
+                docType: state.docType,
+                serviceType: state.serviceType,
+                docNumber: state.docNumber,
+                date: new Date().toISOString()
+            };
+            saveToHistory(finalData);
 
-  const total = currentItems.reduce((a,b)=>a+b.valor,0);
-  const id = Date.now();
+            if(!isNaN(state.docNumber)) {
+                let current = parseInt(localStorage.getItem(COUNTER_KEY) || '1000');
+                if (parseInt(state.docNumber) >= current) {
+                    localStorage.setItem(COUNTER_KEY, state.docNumber.toString());
+                }
+            }
 
-  const registro = {
-    id,
-    cliente,
-    data: new Date().toLocaleDateString(),
-    itens: currentItems,
-    total
-  };
+            generatePDF(finalData);
+            clearDraft();
+            state = { currentItems: [], total: 0, docType: 'FATURAR', serviceType: 'TROCA DE PEÇAS', docNumber: '' };
+            toast("Orçamento arquivado!");
+            router.go('home');
+        };
 
-  await supabase.from(TABLE_NAME).insert([{id,data:registro}]);
+        window.handleFileUpload = function(e) {
+            const file = e.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
 
-  router.home();
-}
+                    let startIdx = 0, headers = [];
+                    for(let i=0; i < Math.min(rows.length, 50); i++){
+                        const row = (rows[i] || []).map(c => String(c || "").toUpperCase());
+                        if(row.includes("DESCRIÇÃO") || row.includes("O.S") || row.includes("PEÇA")){
+                            headers = row;
+                            startIdx = i + 1;
+                            break;
+                        }
+                    }
 
-async function generatePDF(id){
-  const { data } = await supabase
-    .from(TABLE_NAME)
-    .select("*")
-    .eq("id",id)
-    .single();
+                    const cols = {
+                        os: headers.findIndex(h => h.includes("O.S") || h.includes("OS")),
+                        elev: headers.findIndex(h => h.includes("ELEVADOR") || h.includes("EQUIP")),
+                        peca: headers.findIndex(h => h.includes("PEÇA") || h.includes("DESCRIÇÃO")),
+                        qtde: headers.findIndex(h => h.includes("QTDE") || h.includes("QUANT")),
+                        val: headers.findIndex(h => h.includes("VALOR") || h.includes("UNIT") || h.includes("PREÇO")),
+                        condo: headers.findIndex(h => h.includes("CONDOMÍNIO") || h.includes("CLIENTE"))
+                    };
 
-  const d = data.data;
+                    const newItems = rows.slice(startIdx).map(row => {
+                        const peca = String(row[cols.peca] || "").toUpperCase();
+                        if(!peca || peca.includes("TOTAL") || peca === "UNDEFINED") return null;
+                        const v = row[cols.val];
+                        const num = typeof v === 'number' ? v : parseFloat(String(v || 0).replace(/[R$\s.]/g, '').replace(',', '.'));
+                        return {
+                            os: row[cols.os] || '-',
+                            elevador: row[cols.elev] || 'N/A',
+                            peca: peca,
+                            qtde: row[cols.qtde] || '1',
+                            valorUnitario: isNaN(num) ? 0 : num,
+                            condominio: row[cols.condo] || 'CONDOMÍNIO'
+                        };
+                    }).filter(x => x);
 
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
+                    if(newItems.length > 0) {
+                        state.currentItems = newItems;
+                        state.docNumber = getNextNumber();
+                        window.sync();
+                        router.go('editor');
+                        toast("Importado e salvo!");
+                    } else {
+                        toast("Arquivo incompatível");
+                    }
+                } catch (err) {
+                    console.error(err);
+                    toast("Erro ao ler arquivo");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        };
 
-  doc.text("A&T SERVICE", 10, 10);
-  doc.text("Cliente: "+d.cliente,10,20);
-  doc.text("Data: "+d.data,10,30);
+        window.generatePDF = function(data) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const teal = [13, 148, 136];
+            const dark = [15, 23, 42];
 
-  let y=40;
-  d.itens.forEach(i=>{
-    doc.text(i.nome+" - R$ "+i.valor,10,y);
-    y+=10;
-  });
+            doc.setFillColor(...dark);
+            doc.rect(0, 0, pageWidth, 50, 'F');
+            doc.setFillColor(...teal);
+            doc.rect(pageWidth - 85, 0, 85, 50, 'F');
 
-  doc.text("Total: R$ "+d.total,10,y+10);
+            doc.setTextColor(255, 255, 255);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(22);
+            doc.text("Torres Elevadores", 15, 20);
+            doc.setFontSize(8.5);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(180, 180, 180);
+            doc.text(`CNPJ: ${EMPRESA.cnpj}`, 15, 29);
+            doc.text(`TEL: ${EMPRESA.tel} | ${EMPRESA.email}`, 15, 34);
+            doc.text(`${EMPRESA.endereco}`, 15, 39);
 
-  doc.save("orcamento_"+id+".pdf");
-}
+            const greenCenterX = pageWidth - 42.5;
+            doc.setTextColor(255, 255, 255);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(16);
+            doc.text(`ORÇAMENTO #${data.docNumber}`, greenCenterX, 17, {align: 'center'});
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(8);
+            doc.text(`${data.docType}`, greenCenterX, 25, {align: 'center'});
+            doc.setDrawColor(255, 255, 255, 60);
+            doc.line(pageWidth - 75, 29, pageWidth - 10, 29);
+            doc.setFontSize(7.5);
+            doc.text(`CLIENTE: ${CLIENTE_PADRAO}`, greenCenterX, 34, {align: 'center'});
+            doc.text(`DATA: ${new Date(data.date).toLocaleDateString()}`, greenCenterX, 39, {align: 'center'});
+            doc.setFont("helvetica", "bold");
+            doc.text(`${data.serviceType}`, greenCenterX, 44, {align: 'center'});
 
-router.home();
-</script>
+            doc.autoTable({
+                startY: 58,
+                margin: { left: 10, right: 10 },
+                head: [['#', 'O.S.', 'EQUIP.', 'CONDOMÍNIO', 'DESCRIÇÃO DA PEÇA', 'QTDE', 'VALOR (R$)']],
+                body: data.items.map((i, idx) => [
+                    idx + 1, i.os, i.elevador, i.condominio, i.peca.toUpperCase(), i.qtde,
+                    parseFloat(i.valorUnitario).toLocaleString('pt-BR', {minimumFractionDigits: 2})
+                ]),
+                theme: 'striped',
+                headStyles: { fillColor: dark, fontSize: 7, halign: 'center' },
+                styles: { fontSize: 6.5, cellPadding: 3 },
+                columnStyles: {
+                    0: { halign: 'center' },
+                    1: { halign: 'center' },
+                    2: { halign: 'center' },
+                    3: { fontStyle: 'bold' },
+                    4: { width: 80 },
+                    6: { halign: 'right', fontStyle: 'bold' }
+                }
+            });
 
+            const finalY = doc.lastAutoTable.finalY + 10;
+            doc.setFillColor(...teal);
+            doc.rect(pageWidth - 75, finalY - 5, 65, 10, 'F');
+            doc.setFontSize(10);
+            doc.setTextColor(255, 255, 255);
+            doc.text("TOTAL GERAL:", pageWidth - 70, finalY + 1.5);
+            doc.text(`R$ ${data.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`, pageWidth - 15, finalY + 1.5, {align: 'right'});
+
+            doc.setFontSize(7);
+            doc.setTextColor(150);
+            doc.text("* Válido por 10 dias úteis.", 10, finalY + 20);
+            doc.setFillColor(...dark);
+            doc.rect(0, 287, pageWidth, 10, 'F');
+            doc.setTextColor(255);
+            doc.text("Torres Elevadores - Qualidade e Segurança", pageWidth/2, 293.5, {align: 'center'});
+
+            doc.save(`${data.docType.toUpperCase()}_${data.docNumber}.pdf`);
+        };
+
+        window.deleteEntry = function(id) {
+            if(confirm("Excluir este registro permanentemente do banco?")) {
+                const h = getHistory().filter(x => x.id !== id);
+                localStorage.setItem(DB_KEY, JSON.stringify(h));
+                router.renderHistory();
+                toast("Item removido");
+            }
+        };
+
+        window.clearHistory = function() {
+            if(confirm("LIMPAR TODO O HISTÓRICO? Esta ação não pode ser desfeita.")) {
+                localStorage.setItem(DB_KEY, '[]');
+                router.renderHistory();
+                toast("Arquivo limpo");
+            }
+        };
+
+        window.reissuePDF = function(id) {
+            const item = getHistory().find(x => x.id == id);
+            if(item) generatePDF(item);
+        };
+
+        window.toast = function(msg) {
+            const t = document.getElementById('app-toast');
+            if(!t) return;
+            t.innerText = msg;
+            t.style.opacity = '1';
+            setTimeout(() => t.style.opacity = '0', 3000);
+        };
+
+        window.onload = () => {
+            window.sync();
+            router.go('home');
+        };
+    </script>
 </body>
 </html>
