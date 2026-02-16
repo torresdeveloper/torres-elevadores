@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Torres Elevadores | Gestão Integrada</title>
+    <title>Torres Elevadores | Gestão de Orçamentos</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -11,52 +11,48 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Montserrat', sans-serif; background-color: #f8fafc; color: #1e293b; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Montserrat', sans-serif; background-color: #f8fafc; color: #1e293b; }
         .app-card { background: #ffffff; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
-        .modern-input { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; width: 100%; font-size: 14px; transition: all 0.2s; }
-        .modern-input:focus { border-color: #0d9488; outline: none; }
-        .bottom-nav { background: #ffffff; border-top: 1px solid #e2e8f0; position: fixed; bottom: 0; width: 100%; z-index: 100; }
-        .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 10px; font-weight: 700; color: #94a3b8; background: none; border: none; padding: 4px; }
+        .field-label { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block; margin-left: 2px; }
+        .modern-input { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; width: 100%; font-size: 14px; transition: all 0.2s; background: #fff; }
+        .modern-input:focus { border-color: #0d9488; outline: none; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1); }
+        .bottom-nav { background: #ffffff; border-top: 1px solid #e2e8f0; position: fixed; bottom: 0; width: 100%; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
+        .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 10px; font-weight: 700; color: #94a3b8; }
         .nav-item.active { color: #0d9488; }
-        .fab-button { background: #0d9488; width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: white; margin-top: -28px; box-shadow: 0 8px 15px rgba(13, 148, 136, 0.3); border: none; }
-        .toggle-btn { flex: 1; padding: 12px 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; color: #64748b; }
-        .toggle-btn.active { background-color: #0d9488; color: white; border-color: #0d9488; }
+        .fab-button { background: #0d9488; width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: white; margin-top: -28px; box-shadow: 0 8px 15px rgba(13, 148, 136, 0.3); }
     </style>
 </head>
-<body class="pb-32">
+<body class="pb-40">
 
     <header class="px-6 pt-10 pb-6 bg-white border-b border-slate-100 flex justify-between items-center">
         <div>
             <h1 class="text-xl font-extrabold text-slate-900">Torres Elevadores</h1>
-            <p class="text-[9px] text-teal-600 font-bold uppercase tracking-wider">Gestão de Orçamentos</p>
+            <p class="text-[9px] text-teal-600 font-bold uppercase tracking-wider">Sistema de Orçamentos</p>
         </div>
         <div class="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center text-teal-400">
-            <i data-lucide="database" class="w-5 h-5"></i>
+            <i data-lucide="file-text"></i>
         </div>
     </header>
 
-    <main id="app-content" class="px-5 py-6 space-y-5"></main>
+    <main id="app-content" class="px-5 py-6"></main>
 
-    <nav class="bottom-nav px-10 py-4 flex justify-between items-center safe-area-bottom">
+    <nav class="bottom-nav px-10 py-4 flex justify-between items-center">
         <button onclick="router.go('home')" class="nav-item" id="nav-home">
-            <i data-lucide="home" class="w-6 h-6 mb-1"></i>
+            <i data-lucide="home" class="mb-1"></i>
             <span>Início</span>
         </button>
         <button onclick="handleFabClick()" class="fab-button">
             <i data-lucide="plus" class="w-7 h-7"></i>
         </button>
         <button onclick="router.go('history')" class="nav-item" id="nav-history">
-            <i data-lucide="list" class="w-6 h-6 mb-1"></i>
+            <i data-lucide="archive" class="mb-1"></i>
             <span>Arquivo</span>
         </button>
     </nav>
 
-    <div id="app-toast" class="fixed bottom-28 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-xl shadow-xl opacity-0 transition-opacity z-[200] text-xs font-bold uppercase pointer-events-none"></div>
-
     <script>
-        const DB_KEY = 'torres_v15_db';
-        const DRAFT_KEY = 'torres_v15_draft';
-        const COUNTER_KEY = 'torres_v15_serial';
+        const DB_KEY = 'torres_v20_db';
+        const COUNTER_KEY = 'torres_v20_serial';
         
         const EMPRESA = {
             cnpj: "52.019.285/0001-06",
@@ -65,13 +61,7 @@
             endereco: "Rua Menandro Tapajos, 5. Petrópolis."
         };
 
-        let state = JSON.parse(localStorage.getItem(DRAFT_KEY)) || { 
-            currentItems: [], 
-            total: 0, 
-            docType: 'ORÇAMENTO', 
-            serviceType: 'TROCA DE PEÇAS',
-            docNumber: '' 
-        };
+        let state = { currentItems: [], total: 0, docNumber: '' };
 
         const getHistory = () => JSON.parse(localStorage.getItem(DB_KEY) || '[]');
         const saveToHistory = (entry) => {
@@ -79,182 +69,159 @@
             h.unshift(entry);
             localStorage.setItem(DB_KEY, JSON.stringify(h));
         };
-        const getNextNumber = () => {
-            let current = parseInt(localStorage.getItem(COUNTER_KEY) || '1000');
-            return current + 1;
-        };
 
-        window.sync = () => {
-            state.total = state.currentItems.reduce((acc, curr) => {
-                const v = parseFloat(curr.valorUnitario) || 0;
-                const q = parseFloat(curr.qtde) || 1;
-                return acc + (v * q);
+        const calculateTotal = () => {
+            state.total = state.currentItems.reduce((acc, item) => {
+                const q = parseFloat(item.qtde) || 0;
+                const v = parseFloat(item.valorUnitario) || 0;
+                return acc + (q * v);
             }, 0);
-            const totalEl = document.getElementById('editor-total');
-            if (totalEl) totalEl.innerText = `R$ ${state.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-            localStorage.setItem(DRAFT_KEY, JSON.stringify(state));
+            const el = document.getElementById('display-total');
+            if(el) el.innerText = `R$ ${state.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
         };
 
         const router = {
-            go(page, params = null) {
+            go(page) {
                 const content = document.getElementById('app-content');
                 content.innerHTML = '';
                 document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-                const activeNav = document.getElementById(`nav-${page}`);
-                if(activeNav) activeNav.classList.add('active');
+                if(document.getElementById(`nav-${page}`)) document.getElementById(`nav-${page}`).classList.add('active');
 
                 if(page === 'home') this.renderHome();
-                else if(page === 'create') this.renderCreate();
-                else if(page === 'editor') this.renderEditor();
-                else if(page === 'history') this.renderHistory();
-                
-                if(window.lucide) lucide.createIcons();
+                if(page === 'editor') this.renderEditor();
+                if(page === 'history') this.renderHistory();
+                lucide.createIcons();
             },
 
             renderHome() {
                 const history = getHistory();
                 document.getElementById('app-content').innerHTML = `
                     <div class="app-card p-6 bg-slate-900 text-white mb-6">
-                        <p class="text-[10px] font-bold text-teal-400 uppercase mb-1">Total em Histórico</p>
+                        <p class="text-[10px] font-bold text-teal-400 uppercase">Acumulado em Arquivo</p>
                         <h2 class="text-2xl font-black">R$ ${history.reduce((a,b)=>a+b.total,0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</h2>
                     </div>
-                    <div class="grid grid-cols-2 gap-4 mb-8">
-                        <button onclick="router.go('create')" class="app-card p-6 flex flex-col items-center gap-3 active:bg-slate-50">
-                            <i data-lucide="file-up" class="w-6 h-6 text-teal-600"></i>
-                            <span class="text-[10px] font-black uppercase">Importar Planilha</span>
-                        </button>
-                        <button onclick="startManual()" class="app-card p-6 flex flex-col items-center gap-3 active:bg-slate-50">
-                            <i data-lucide="edit" class="w-6 h-6 text-slate-600"></i>
-                            <span class="text-[10px] font-black uppercase">Novo Manual</span>
-                        </button>
-                    </div>`;
-            },
-
-            renderCreate() {
-                document.getElementById('app-content').innerHTML = `
-                    <div class="app-card p-10 flex flex-col items-center text-center space-y-6">
-                        <div class="w-16 h-16 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center"><i data-lucide="upload" class="w-8 h-8"></i></div>
-                        <h3 class="font-black text-slate-900 uppercase text-xs tracking-widest">Carregar Dados</h3>
-                        <input type="file" id="file-input" class="hidden" accept=".xlsx" onchange="handleFileUpload(event)">
-                        <button onclick="document.getElementById('file-input').click()" class="w-full py-4 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase">Selecionar Arquivo</button>
-                    </div>`;
+                    <button onclick="startNew()" class="w-full app-card p-8 flex flex-col items-center gap-4 active:scale-95 transition-transform">
+                        <div class="w-12 h-12 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center"><i data-lucide="plus-circle"></i></div>
+                        <span class="font-black text-xs uppercase tracking-widest">Criar Novo Orçamento</span>
+                    </button>
+                `;
             },
 
             renderEditor() {
-                if(!state.docNumber) state.docNumber = getNextNumber();
                 document.getElementById('app-content').innerHTML = `
-                    <div class="flex items-center justify-between mb-4">
-                        <button onclick="router.go('home')" class="p-2 bg-white rounded-lg border border-slate-200"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
-                        <h2 class="font-black text-teal-600 uppercase text-sm">Orçamento #${state.docNumber}</h2>
-                        <button onclick="resetEditor()" class="p-2 bg-red-50 text-red-400 rounded-lg"><i data-lucide="trash" class="w-4 h-4"></i></button>
-                    </div>
-                    <div class="space-y-6 pb-64">
-                        <div id="items-container" class="space-y-4">
-                            ${state.currentItems.map((item, idx) => `
-                                <div class="app-card p-5 space-y-4 border-l-4 border-teal-500">
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <input type="text" class="modern-input !text-xs font-bold" value="${item.os}" placeholder="O.S." oninput="state.currentItems[${idx}].os = this.value; window.sync();">
-                                        <input type="text" class="modern-input !text-xs" value="${item.elevador}" placeholder="Equipamento" oninput="state.currentItems[${idx}].elevador = this.value; window.sync();">
-                                    </div>
-                                    <input type="text" class="modern-input !text-xs uppercase font-bold" value="${item.condominio}" placeholder="Condomínio" oninput="state.currentItems[${idx}].condominio = this.value.toUpperCase(); window.sync();">
-                                    <textarea class="modern-input !text-xs uppercase" rows="2" placeholder="DESCRIÇÃO DA PEÇA" oninput="state.currentItems[${idx}].peca = this.value.toUpperCase(); window.sync();">${item.peca}</textarea>
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <input type="number" class="modern-input !text-xs" value="${item.qtde}" placeholder="Qtd" oninput="state.currentItems[${idx}].qtde = this.value; window.sync();">
-                                        <input type="number" class="modern-input !text-xs font-bold" value="${item.valorUnitario}" placeholder="VALOR UNIT." oninput="state.currentItems[${idx}].valorUnitario = this.value; window.sync();">
-                                    </div>
-                                </div>`).join('')}
-                            <button onclick="addItem()" class="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-[9px] font-black text-slate-400 uppercase">+ Adicionar Item</button>
+                    <div class="flex justify-between items-end mb-6">
+                        <div>
+                            <span class="field-label">Número do Documento</span>
+                            <input type="text" class="text-xl font-black text-teal-600 bg-transparent border-b-2 border-teal-200 outline-none w-32" value="${state.docNumber}" oninput="state.docNumber = this.value">
                         </div>
+                        <button onclick="router.go('home')" class="text-[10px] font-bold text-slate-400 uppercase">Cancelar</button>
                     </div>
-                    <div class="fixed bottom-0 left-0 w-full p-6 bg-white border-t z-[110] shadow-2xl">
+
+                    <div id="items-list" class="space-y-6">
+                        ${state.currentItems.map((item, idx) => `
+                            <div class="app-card p-5 border-l-4 border-teal-500 relative">
+                                <button onclick="removeItem(${idx})" class="absolute top-4 right-4 text-slate-300"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                <div class="space-y-4">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="field-label">O.S. (Ordem de Serviço)</label>
+                                            <input type="text" class="modern-input" value="${item.os}" oninput="state.currentItems[${idx}].os = this.value">
+                                        </div>
+                                        <div>
+                                            <label class="field-label">Nº Equipamento</label>
+                                            <input type="text" class="modern-input" value="${item.elevador}" oninput="state.currentItems[${idx}].elevador = this.value">
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="field-label">Nome do Condomínio</label>
+                                        <input type="text" class="modern-input font-bold uppercase" value="${item.condominio}" oninput="state.currentItems[${idx}].condominio = this.value.toUpperCase()">
+                                    </div>
+                                    <div>
+                                        <label class="field-label">Descrição da Peça / Serviço</label>
+                                        <textarea class="modern-input uppercase text-xs" rows="2" oninput="state.currentItems[${idx}].peca = this.value.toUpperCase()">${item.peca}</textarea>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="field-label">Quantidade</label>
+                                            <input type="number" class="modern-input" value="${item.qtde}" oninput="state.currentItems[${idx}].qtde = this.value; calculateTotal()">
+                                        </div>
+                                        <div>
+                                            <label class="field-label">Valor Unitário (R$)</label>
+                                            <input type="number" step="0.01" class="modern-input font-bold text-teal-700" value="${item.valorUnitario}" oninput="state.currentItems[${idx}].valorUnitario = this.value; calculateTotal()">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <button onclick="addItem()" class="w-full py-4 mt-6 border-2 border-dashed border-slate-200 rounded-xl text-[10px] font-bold text-slate-400 uppercase">+ Adicionar Novo Item</button>
+
+                    <div class="fixed bottom-0 left-0 w-full p-6 bg-white border-t shadow-2xl z-[110]">
                         <div class="flex justify-between items-center mb-4">
-                            <span class="text-[9px] font-black text-slate-400 uppercase">Total Geral</span>
-                            <span id="editor-total" class="text-xl font-black text-slate-900">R$ ${state.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                            <span class="text-[10px] font-black text-slate-400 uppercase">Valor Total do Orçamento</span>
+                            <span id="display-total" class="text-2xl font-black text-slate-900">R$ 0,00</span>
                         </div>
-                        <button onclick="finalizeAndPrint()" class="w-full py-4 bg-teal-600 text-white rounded-xl font-black text-[10px] uppercase">Finalizar e Gerar PDF</button>
-                    </div>`;
+                        <button onclick="finish()" class="w-full py-4 bg-teal-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-teal-100">Gerar PDF e Salvar</button>
+                    </div>
+                `;
+                calculateTotal();
                 lucide.createIcons();
             },
 
             renderHistory() {
                 const history = getHistory();
                 document.getElementById('app-content').innerHTML = `
-                    <h2 class="font-black text-[10px] uppercase text-slate-400 mb-4">Banco de Dados</h2>
+                    <h2 class="field-label mb-4">Orçamentos Arquivados</h2>
                     <div class="space-y-3">
                         ${history.map(h => `
                             <div class="app-card p-4 flex justify-between items-center">
-                                <div><p class="font-bold text-sm">#${h.docNumber}</p><p class="text-[8px] text-slate-400 uppercase">${new Date(h.date).toLocaleDateString()}</p></div>
-                                <p class="text-xs font-black">R$ ${h.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</p>
-                            </div>`).join('') || '<p class="text-center py-10 opacity-30 uppercase text-[10px] font-black">Vazio</p>'}
-                    </div>`;
+                                <div><p class="font-black text-slate-900">#${h.docNumber}</p><p class="text-[8px] font-bold text-slate-400">${new Date(h.date).toLocaleDateString()}</p></div>
+                                <p class="font-black text-teal-600">R$ ${h.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</p>
+                            </div>
+                        `).join('') || '<p class="text-center py-20 opacity-20 font-black">NENHUM REGISTRO</p>'}
+                    </div>
+                `;
             }
         };
 
-        function startManual() {
-            state = { currentItems: [], total: 0, docType: 'ORÇAMENTO', serviceType: 'TROCA DE PEÇAS', docNumber: getNextNumber() };
+        function startNew() {
+            let lastNum = parseInt(localStorage.getItem(COUNTER_KEY) || '1000');
+            state = { currentItems: [], total: 0, docNumber: lastNum + 1 };
             addItem();
             router.go('editor');
         }
 
         function addItem() {
-            state.currentItems.push({ os: '', elevador: '', peca: '', qtde: 1, valorUnitario: 0, condominio: '' });
-            if(document.getElementById('items-container')) router.renderEditor();
-            window.sync();
+            state.currentItems.push({ os: '', elevador: '', condominio: '', peca: '', qtde: 1, valorUnitario: 0 });
+            router.renderEditor();
         }
 
-        function handleFileUpload(e) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = (evt) => {
-                const workbook = XLSX.read(new Uint8Array(evt.target.result), {type: 'array'});
-                const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
-                
-                // Pega cabeçalhos e tenta mapear automaticamente
-                const headers = rows[0].map(h => String(h).toUpperCase());
-                const cols = {
-                    os: headers.findIndex(h => h.includes("O.S") || h.includes("OS")),
-                    elev: headers.findIndex(h => h.includes("EQUIP") || h.includes("ELEVADOR")),
-                    condo: headers.findIndex(h => h.includes("CONDOMÍNIO") || h.includes("CLIENTE")),
-                    peca: headers.findIndex(h => h.includes("PEÇA") || h.includes("DESCRIÇÃO")),
-                    qtde: headers.findIndex(h => h.includes("QTDE") || h.includes("QUANT")),
-                    val: headers.findIndex(h => h.includes("VALOR") || h.includes("UNIT"))
-                };
-
-                state.currentItems = rows.slice(1).map(row => {
-                    if(!row[cols.peca]) return null;
-                    return {
-                        os: row[cols.os] || '-',
-                        elevador: row[cols.elev] || 'N/A',
-                        condominio: String(row[cols.condo] || '').toUpperCase(),
-                        peca: String(row[cols.peca] || '').toUpperCase(),
-                        qtde: parseFloat(row[cols.qtde]) || 1,
-                        valorUnitario: parseFloat(String(row[cols.val]).replace(/[R$\s.]/g, '').replace(',', '.')) || 0
-                    };
-                }).filter(x => x);
-                
-                window.sync();
-                router.go('editor');
-            };
-            reader.readAsArrayBuffer(file);
+        function removeItem(idx) {
+            state.currentItems.splice(idx, 1);
+            if(state.currentItems.length === 0) addItem();
+            router.renderEditor();
         }
 
-        function finalizeAndPrint() {
-            const finalData = { ...state, id: Date.now(), date: new Date().toISOString() };
-            saveToHistory(finalData);
-            generatePDF(finalData);
-            localStorage.removeItem(DRAFT_KEY);
-            state.currentItems = [];
+        function finish() {
+            if(state.currentItems.some(i => !i.peca || i.valorUnitario <= 0)) {
+                alert("Preencha a descrição e o valor de todos os itens.");
+                return;
+            }
+            const data = { ...state, date: new Date().toISOString(), id: Date.now() };
+            saveToHistory(data);
+            localStorage.setItem(COUNTER_KEY, state.docNumber);
+            generatePDF(data);
             router.go('home');
         }
 
         function generatePDF(data) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4');
-            const teal = [13, 148, 136], dark = [15, 23, 42];
-
-            // Header profissional
-            doc.setFillColor(...dark); doc.rect(0, 0, 210, 45, 'F');
-            doc.setFillColor(...teal); doc.rect(140, 0, 70, 45, 'F');
+            
+            // Layout de Cabeçalho (Idêntico ao seu padrão)
+            doc.setFillColor(15, 23, 42); doc.rect(0, 0, 210, 45, 'F');
+            doc.setFillColor(13, 148, 136); doc.rect(140, 0, 70, 45, 'F');
 
             doc.setTextColor(255); doc.setFont("helvetica", "bold"); doc.setFontSize(20);
             doc.text("Torres Elevadores", 15, 20);
@@ -263,31 +230,32 @@
             doc.text(`CONTATO: ${EMPRESA.tel} | ${EMPRESA.email}`, 15, 33);
             doc.text(EMPRESA.endereco, 15, 38);
 
-            doc.setFontSize(14); doc.setFont("helvetica", "bold");
-            doc.text(`ORÇAMENTO #${data.docNumber}`, 175, 20, {align: 'center'});
-            doc.setFontSize(8); doc.text(`DATA: ${new Date(data.date).toLocaleDateString()}`, 175, 30, {align: 'center'});
+            doc.setFontSize(14); doc.text(`ORÇAMENTO #${data.docNumber}`, 175, 22, {align: 'center'});
+            doc.setFontSize(8); doc.text(`DATA: ${new Date(data.date).toLocaleDateString()}`, 175, 32, {align: 'center'});
 
             doc.autoTable({
                 startY: 55,
-                head: [['#', 'O.S.', 'EQUIP.', 'CONDOMÍNIO', 'DESCRIÇÃO DA PEÇA', 'QTDE', 'VALOR UNIT.']],
+                head: [['#', 'O.S.', 'EQUIP.', 'CONDOMÍNIO', 'DESCRIÇÃO DA PEÇA', 'QTDE', 'UNIT.', 'SUBTOTAL']],
                 body: data.items.map((i, idx) => [
                     idx + 1, i.os, i.elevador, i.condominio, i.peca, i.qtde, 
-                    `R$ ${parseFloat(i.valorUnitario).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`
+                    i.valorUnitario.toLocaleString('pt-BR', {minimumFractionDigits: 2}),
+                    (i.qtde * i.valorUnitario).toLocaleString('pt-BR', {minimumFractionDigits: 2})
                 ]),
                 theme: 'striped',
-                headStyles: { fillColor: dark, fontSize: 7 },
+                headStyles: { fillColor: [15, 23, 42], fontSize: 7, halign: 'center' },
                 styles: { fontSize: 6.5 },
-                columnStyles: { 4: { cellWidth: 70 } }
+                columnStyles: { 4: { cellWidth: 60 }, 7: { halign: 'right', fontStyle: 'bold' } }
             });
 
             const finalY = doc.lastAutoTable.finalY + 10;
-            doc.setFillColor(...teal); doc.rect(140, finalY - 5, 60, 10, 'F');
-            doc.setFontSize(10); doc.text(`TOTAL: R$ ${data.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`, 195, finalY + 1.5, {align: 'right'});
+            doc.setFillColor(13, 148, 136); doc.rect(140, finalY - 5, 60, 10, 'F');
+            doc.setTextColor(255); doc.setFontSize(10);
+            doc.text(`TOTAL: R$ ${data.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`, 195, finalY + 1.5, {align: 'right'});
 
             doc.save(`ORCAMENTO_${data.docNumber}.pdf`);
         }
 
-        function handleFabClick() { if(state.currentItems.length > 0) router.go('editor'); else startManual(); }
+        function handleFabClick() { router.go('editor'); }
         window.onload = () => router.go('home');
     </script>
 </body>
