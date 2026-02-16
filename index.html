@@ -20,6 +20,7 @@
         .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 10px; font-weight: 700; color: #94a3b8; }
         .nav-item.active { color: #0d9488; }
         .fab-button { background: #0d9488; width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: white; margin-top: -28px; box-shadow: 0 8px 15px rgba(13, 148, 136, 0.3); }
+        #file-import { display: none; }
     </style>
 </head>
 <body class="pb-40">
@@ -29,8 +30,14 @@
             <h1 class="text-xl font-extrabold text-slate-900">Torres Elevadores</h1>
             <p class="text-[9px] text-teal-600 font-bold uppercase tracking-wider">Sistema de Orçamentos</p>
         </div>
-        <div class="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center text-teal-400">
-            <i data-lucide="file-text"></i>
+        <div class="flex gap-2">
+            <label for="file-import" class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 cursor-pointer">
+                <i data-lucide="upload"></i>
+            </label>
+            <input type="file" id="file-import" accept=".xlsx, .xls, .csv" onchange="importData(event)">
+            <div class="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center text-teal-400">
+                <i data-lucide="file-text"></i>
+            </div>
         </div>
     </header>
 
@@ -62,6 +69,34 @@
         };
 
         let state = { currentItems: [], total: 0, docNumber: '' };
+
+        // --- FUNÇÃO DE IMPORTAÇÃO ---
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                // Mapeia os dados da planilha para o formato do app
+                state.currentItems = jsonData.map(row => ({
+                    os: row["O.S."] || row["OS"] || "",
+                    elevador: row["EQUIP."] || row["EQUIPAMENTO"] || "",
+                    condominio: (row["CONDOMÍNIO"] || row["CONDOMINIO"] || "").toString().toUpperCase(),
+                    peca: (row["DESCRIÇÃO DA PEÇA"] || row["DESCRICAO"] || "").toString().toUpperCase(),
+                    qtde: parseFloat(row["QTDE"] || row["QUANTIDADE"]) || 1,
+                    valorUnitario: parseFloat(row["VALOR"] || row["UNITARIO"] || row["VALOR UNITARIO"]) || 0
+                }));
+
+                router.go('editor');
+                alert("Dados importados com sucesso!");
+            };
+            reader.readAsArrayBuffer(file);
+        }
 
         const getHistory = () => JSON.parse(localStorage.getItem(DB_KEY) || '[]');
         const saveToHistory = (entry) => {
@@ -100,18 +135,29 @@
                         <p class="text-[10px] font-bold text-teal-400 uppercase">Acumulado em Arquivo</p>
                         <h2 class="text-2xl font-black">R$ ${history.reduce((a,b)=>a+b.total,0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</h2>
                     </div>
-                    <button onclick="startNew()" class="w-full app-card p-8 flex flex-col items-center gap-4 active:scale-95 transition-transform">
-                        <div class="w-12 h-12 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center"><i data-lucide="plus-circle"></i></div>
-                        <span class="font-black text-xs uppercase tracking-widest">Criar Novo Orçamento</span>
-                    </button>
+                    <div class="grid grid-cols-1 gap-4">
+                        <button onclick="startNew()" class="app-card p-8 flex flex-col items-center gap-4 active:scale-95 transition-transform">
+                            <div class="w-12 h-12 bg-teal-50 text-teal-600 rounded-full flex items-center justify-center"><i data-lucide="plus-circle"></i></div>
+                            <span class="font-black text-xs uppercase tracking-widest">Criar Novo Orçamento</span>
+                        </button>
+                        <label for="file-import" class="app-card p-8 flex flex-col items-center gap-4 active:scale-95 transition-transform cursor-pointer">
+                            <div class="w-12 h-12 bg-slate-50 text-slate-600 rounded-full flex items-center justify-center"><i data-lucide="upload"></i></div>
+                            <span class="font-black text-xs uppercase tracking-widest">Importar Excel/CSV</span>
+                        </label>
+                    </div>
                 `;
             },
 
             renderEditor() {
+                if(!state.docNumber) {
+                    let lastNum = parseInt(localStorage.getItem(COUNTER_KEY) || '1000');
+                    state.docNumber = lastNum + 1;
+                }
+                
                 document.getElementById('app-content').innerHTML = `
                     <div class="flex justify-between items-end mb-6">
                         <div>
-                            <span class="field-label">Número do Documento</span>
+                            <label class="field-label">Número do Documento</label>
                             <input type="text" class="text-xl font-black text-teal-600 bg-transparent border-b-2 border-teal-200 outline-none w-32" value="${state.docNumber}" oninput="state.docNumber = this.value">
                         </div>
                         <button onclick="router.go('home')" class="text-[10px] font-bold text-slate-400 uppercase">Cancelar</button>
@@ -159,7 +205,7 @@
 
                     <div class="fixed bottom-0 left-0 w-full p-6 bg-white border-t shadow-2xl z-[110]">
                         <div class="flex justify-between items-center mb-4">
-                            <span class="text-[10px] font-black text-slate-400 uppercase">Valor Total do Orçamento</span>
+                            <span class="text-[10px] font-black text-slate-400 uppercase">Valor Total</span>
                             <span id="display-total" class="text-2xl font-black text-slate-900">R$ 0,00</span>
                         </div>
                         <button onclick="finish()" class="w-full py-4 bg-teal-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-teal-100">Gerar PDF e Salvar</button>
@@ -186,8 +232,7 @@
         };
 
         function startNew() {
-            let lastNum = parseInt(localStorage.getItem(COUNTER_KEY) || '1000');
-            state = { currentItems: [], total: 0, docNumber: lastNum + 1 };
+            state = { currentItems: [], total: 0, docNumber: '' };
             addItem();
             router.go('editor');
         }
@@ -219,7 +264,6 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4');
             
-            // Layout de Cabeçalho (Idêntico ao seu padrão)
             doc.setFillColor(15, 23, 42); doc.rect(0, 0, 210, 45, 'F');
             doc.setFillColor(13, 148, 136); doc.rect(140, 0, 70, 45, 'F');
 
@@ -236,7 +280,7 @@
             doc.autoTable({
                 startY: 55,
                 head: [['#', 'O.S.', 'EQUIP.', 'CONDOMÍNIO', 'DESCRIÇÃO DA PEÇA', 'QTDE', 'UNIT.', 'SUBTOTAL']],
-                body: data.items.map((i, idx) => [
+                body: data.currentItems.map((i, idx) => [
                     idx + 1, i.os, i.elevador, i.condominio, i.peca, i.qtde, 
                     i.valorUnitario.toLocaleString('pt-BR', {minimumFractionDigits: 2}),
                     (i.qtde * i.valorUnitario).toLocaleString('pt-BR', {minimumFractionDigits: 2})
