@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Torres Elevadores | Gestão de Orçamentos</title>
+    <title>Torres Elevadores | Dashboard & Gestão</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -16,45 +17,51 @@
         .modern-input { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; width: 100%; font-size: 14px; transition: all 0.2s; }
         .modern-input:focus { border-color: #0d9488; outline: none; }
         .bottom-nav { background: #ffffff; border-top: 1px solid #e2e8f0; position: fixed; bottom: 0; width: 100%; z-index: 100; }
-        .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 10px; font-weight: 700; color: #94a3b8; background: none; border: none; padding: 4px; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 10px; font-weight: 700; color: #94a3b8; background: none; border: none; padding: 4px; flex: 1; }
         .nav-item.active { color: #0d9488; }
-        .fab-button { background: #0d9488; width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: white; margin-top: -28px; box-shadow: 0 8px 15px rgba(13, 148, 136, 0.3); border: none; }
+        .fab-button { background: #0d9488; width: 52px; height: 52px; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: white; margin-top: -26px; box-shadow: 0 8px 15px rgba(13, 148, 136, 0.3); border: none; flex-shrink: 0; }
         .toggle-btn { flex: 1; padding: 12px 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; color: #64748b; }
         .toggle-btn.active { background-color: #0d9488; color: white; border-color: #0d9488; }
         .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
-        .search-container { position: sticky; top: 0; z-index: 50; background: #f8fafc; padding-bottom: 12px; }
-        
         .card-faturar { border-left: 4px solid #0d9488; background: #ffffff; }
         .card-contrato { background: #0f172a; color: white; border-left: 4px solid #38bdf8; }
-        .card-contrato p, .card-contrato span { color: #94a3b8; }
         .card-contrato .text-title { color: white; }
         .card-contrato .text-price { color: #38bdf8; }
+        .chart-container { position: relative; height: 200px; width: 100%; }
     </style>
 </head>
 <body class="pb-32">
-    <header class="px-6 pt-10 pb-6 bg-white border-b border-slate-100 flex justify-between items-center">
+    <header class="px-6 pt-10 pb-6 bg-white border-b border-slate-100 flex justify-between items-center sticky top-0 z-[60]">
         <div>
             <h1 class="text-xl font-extrabold text-slate-900">Torres Elevadores</h1>
             <p class="text-[9px] text-teal-600 font-bold uppercase tracking-wider">Gestão Operacional</p>
         </div>
         <div class="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center text-teal-400">
-            <i data-lucide="database" class="w-5 h-5"></i>
+            <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
         </div>
     </header>
 
     <main id="app-content" class="px-5 py-6 space-y-5"></main>
 
-    <nav class="bottom-nav px-10 py-4 flex justify-between items-center safe-area-bottom">
+    <nav class="bottom-nav px-4 py-4 flex justify-between items-center safe-area-bottom">
         <button onclick="router.go('home')" class="nav-item" id="nav-home">
-            <i data-lucide="home" class="w-6 h-6 mb-1"></i>
+            <i data-lucide="home" class="w-5 h-5 mb-1"></i>
             <span>Início</span>
         </button>
+        <button onclick="router.go('dashboard')" class="nav-item" id="nav-dashboard">
+            <i data-lucide="pie-chart" class="w-5 h-5 mb-1"></i>
+            <span>Painel</span>
+        </button>
         <button onclick="handleFabClick()" class="fab-button">
-            <i data-lucide="plus" class="w-7 h-7"></i>
+            <i data-lucide="plus" class="w-6 h-6"></i>
         </button>
         <button onclick="router.go('history')" class="nav-item" id="nav-history">
-            <i data-lucide="list" class="w-6 h-6 mb-1"></i>
+            <i data-lucide="archive" class="w-5 h-5 mb-1"></i>
             <span>Arquivo</span>
+        </button>
+        <button onclick="router.go('create')" class="nav-item" id="nav-create">
+            <i data-lucide="upload" class="w-5 h-5 mb-1"></i>
+            <span>Importar</span>
         </button>
     </nav>
 
@@ -99,11 +106,8 @@
                 const val = parseFloat(curr.valorUnitario) || 0;
                 return acc + val;
             }, 0);
-            
             const totalEl = document.getElementById('editor-total');
-            if (totalEl) {
-                totalEl.innerText = `R$ ${state.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-            }
+            if (totalEl) totalEl.innerText = `R$ ${state.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
             saveDraft(state);
         };
 
@@ -120,6 +124,7 @@
                 else if(page === 'editor') this.renderEditor();
                 else if(page === 'history') this.renderHistory();
                 else if(page === 'details') this.renderDetails(params);
+                else if(page === 'dashboard') this.renderDashboard();
 
                 if(window.lucide) lucide.createIcons();
                 window.scrollTo(0,0);
@@ -128,62 +133,178 @@
             renderHome() {
                 const history = getHistory();
                 const hasActive = state.currentItems.length > 0;
-                const totalHistorico = history.reduce((a,b) => a + (b.total || 0), 0);
+                const totalGeral = history.reduce((a,b) => a + (b.total || 0), 0);
 
                 document.getElementById('app-content').innerHTML = `
-                    <div class="app-card p-6 bg-slate-900 text-white mb-6">
-                        <p class="text-[10px] font-bold text-teal-400 uppercase mb-1">Total em Histórico</p>
-                        <h2 class="text-2xl font-black">R$ ${totalHistorico.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</h2>
+                    <div class="app-card p-6 bg-slate-900 text-white mb-6 overflow-hidden relative">
+                        <div class="absolute -right-4 -bottom-4 opacity-10"><i data-lucide="trending-up" class="w-32 h-32"></i></div>
+                        <p class="text-[10px] font-bold text-teal-400 uppercase mb-1">Saldo em Histórico</p>
+                        <h2 class="text-2xl font-black">R$ ${totalGeral.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</h2>
+                        <p class="text-[8px] text-slate-400 mt-2 uppercase font-bold">${history.length} orçamentos arquivados</p>
                     </div>
 
                     ${hasActive ? `
-                    <div class="app-card p-4 border-l-4 border-teal-500 flex justify-between items-center bg-teal-50 mb-6">
+                    <div class="app-card p-4 border-l-4 border-teal-500 flex justify-between items-center bg-teal-50/50 mb-6">
                         <div>
-                            <p class="text-[10px] font-bold text-teal-600 uppercase">Dados em Memória</p>
-                            <p class="text-sm font-bold text-slate-800">Orçamento #${state.docNumber || 'Iniciado'}</p>
+                            <p class="text-[10px] font-bold text-teal-600 uppercase">Trabalho em Aberto</p>
+                            <p class="text-sm font-bold text-slate-800">Orçamento #${state.docNumber || '...'}</p>
                         </div>
                         <button onclick="router.go('editor')" class="bg-teal-600 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase">Continuar</button>
                     </div>` : ''}
 
                     <div class="grid grid-cols-2 gap-4 mb-8">
-                        <button onclick="router.go('create')" class="app-card p-6 flex flex-col items-center gap-3 active:bg-slate-50 transition-colors">
-                            <i data-lucide="file-up" class="w-6 h-6 text-teal-600"></i>
-                            <span class="text-[10px] font-black uppercase">Importar Excel</span>
+                        <button onclick="startManual()" class="app-card p-6 flex flex-col items-center gap-3 active:scale-95 transition-transform">
+                            <i data-lucide="plus-circle" class="w-6 h-6 text-teal-600"></i>
+                            <span class="text-[10px] font-black uppercase text-slate-600">Novo Manual</span>
                         </button>
-                        <button onclick="startManual()" class="app-card p-6 flex flex-col items-center gap-3 active:bg-slate-50 transition-colors">
-                            <i data-lucide="edit" class="w-6 h-6 text-slate-600"></i>
-                            <span class="text-[10px] font-black uppercase">Novo Manual</span>
+                        <button onclick="router.go('dashboard')" class="app-card p-6 flex flex-col items-center gap-3 active:scale-95 transition-transform">
+                            <i data-lucide="pie-chart" class="w-6 h-6 text-slate-600"></i>
+                            <span class="text-[10px] font-black uppercase text-slate-600">Ver Painel</span>
                         </button>
                     </div>
 
                     <div class="space-y-3">
-                        <h3 class="text-[10px] font-black uppercase text-slate-400 px-1">Últimos Orçamentos</h3>
-                        ${history.slice(0, 3).map(h => `
-                            <div onclick="router.go('details', ${h.id})" class="app-card p-4 flex justify-between items-center cursor-pointer hover:scale-[1.01] transition-transform ${h.docType === 'CONTRATO' ? 'card-contrato' : 'card-faturar'}">
-                                <div class="truncate pr-4">
-                                    <p class="text-xs font-black text-title">#${h.docNumber}</p>
-                                    <p class="text-[8px] font-bold uppercase mt-1 opacity-70">${h.docType} | ${new Date(h.date).toLocaleDateString()}</p>
-                                </div>
+                        <div class="flex justify-between items-center px-1">
+                            <h3 class="text-[10px] font-black uppercase text-slate-400">Recentes</h3>
+                            <button onclick="router.go('history')" class="text-[8px] font-bold text-teal-600 uppercase">Ver todos</button>
+                        </div>
+                        ${history.slice(0, 5).map(h => `
+                            <div onclick="router.go('details', ${h.id})" class="app-card p-4 flex justify-between items-center cursor-pointer ${h.docType === 'CONTRATO' ? 'card-contrato' : 'card-faturar'}">
+                                <p class="text-xs font-black text-title tracking-widest">ORÇAMENTO #${h.docNumber}</p>
                                 <p class="text-xs font-black text-price whitespace-nowrap">R$ ${h.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</p>
                             </div>
-                        `).join('') || '<p class="text-center py-10 text-slate-300 text-[10px] font-bold uppercase">Nenhum dado salvo</p>'}
+                        `).join('') || '<p class="text-center py-10 text-slate-300 text-[10px] font-bold uppercase">Sem registros</p>'}
                     </div>
                 `;
             },
 
+            renderDashboard() {
+                const history = getHistory();
+                const now = new Date();
+                const currentMonth = now.getMonth();
+                const currentYear = now.getFullYear();
+
+                const filterByMonth = (h, m, y) => {
+                    const d = new Date(h.date);
+                    return d.getMonth() === m && d.getFullYear() === y;
+                };
+
+                const thisMonthTotal = history.filter(h => filterByMonth(h, currentMonth, currentYear)).reduce((a,b) => a + b.total, 0);
+                const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+                const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+                const lastMonthTotal = history.filter(h => filterByMonth(h, prevMonth, prevYear)).reduce((a,b) => a + b.total, 0);
+
+                const serviceCount = {};
+                history.forEach(h => {
+                    serviceCount[h.serviceType] = (serviceCount[h.serviceType] || 0) + 1;
+                });
+
+                const clientVolume = {};
+                history.forEach(h => {
+                    h.items.forEach(it => {
+                        const c = it.condominio?.toUpperCase().trim() || 'OUTROS';
+                        clientVolume[c] = (clientVolume[c] || 0) + (parseFloat(it.valorUnitario) || 0);
+                    });
+                });
+                const topClients = Object.entries(clientVolume).sort((a,b) => b[1] - a[1]).slice(0, 5);
+
+                document.getElementById('app-content').innerHTML = `
+                    <div class="flex items-center gap-3 mb-4">
+                        <button onclick="router.go('home')" class="p-2 bg-white rounded-lg border border-slate-200"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                        <h2 class="font-black text-sm uppercase text-slate-800 tracking-widest">Painel de Gestão</h2>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="app-card p-4 bg-white">
+                            <p class="text-[8px] font-bold text-slate-400 uppercase">Faturamento Mês</p>
+                            <h4 class="text-lg font-black text-teal-600 mt-1">R$ ${thisMonthTotal.toLocaleString('pt-BR', {minimumFractionDigits: 0})}</h4>
+                            <div class="mt-2 flex items-center gap-1">
+                                <span class="text-[8px] font-bold ${thisMonthTotal >= lastMonthTotal ? 'text-green-500' : 'text-red-400'}">
+                                    ${lastMonthTotal > 0 ? (((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100).toFixed(0) + '%' : '---'}
+                                </span>
+                                <span class="text-[7px] text-slate-300 font-bold uppercase">vs mês ant.</span>
+                            </div>
+                        </div>
+                        <div class="app-card p-4 bg-slate-900 text-white">
+                            <p class="text-[8px] font-bold text-slate-400 uppercase">Orçamentos Mês</p>
+                            <h4 class="text-lg font-black text-white mt-1">${history.filter(h => filterByMonth(h, currentMonth, currentYear)).length}</h4>
+                            <p class="text-[8px] text-slate-500 font-bold mt-2 uppercase">Total: ${history.length}</p>
+                        </div>
+                    </div>
+
+                    <div class="app-card p-5">
+                        <h3 class="text-[9px] font-black uppercase text-slate-400 mb-4 tracking-wider">Serviços por Categoria</h3>
+                        <div class="chart-container">
+                            <canvas id="chart-services"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="app-card p-5">
+                        <h3 class="text-[9px] font-black uppercase text-slate-400 mb-4 tracking-wider">Top 5 Condomínios (Receita)</h3>
+                        <div class="space-y-4">
+                            ${topClients.map(([name, val], i) => `
+                                <div class="space-y-1">
+                                    <div class="flex justify-between text-[9px] font-black uppercase">
+                                        <span class="truncate max-w-[150px] text-slate-700">${i+1}. ${name}</span>
+                                        <span class="text-teal-600">R$ ${val.toLocaleString('pt-BR', {minimumFractionDigits: 0})}</span>
+                                    </div>
+                                    <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                        <div class="h-full bg-teal-500" style="width: ${(val / (topClients[0][1] || 1) * 100).toFixed(0)}%"></div>
+                                    </div>
+                                </div>
+                            `).join('') || '<p class="text-center py-4 text-[10px] text-slate-300">Sem dados suficientes</p>'}
+                        </div>
+                    </div>
+                `;
+
+                const ctx = document.getElementById('chart-services')?.getContext('2d');
+                if(ctx && Object.keys(serviceCount).length > 0) {
+                    new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: Object.keys(serviceCount),
+                            datasets: [{
+                                data: Object.values(serviceCount),
+                                backgroundColor: ['#0d9488', '#0f172a', '#38bdf8', '#fbbf24', '#f472b6'],
+                                borderWidth: 0,
+                                hoverOffset: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'right',
+                                    labels: {
+                                        boxWidth: 10,
+                                        font: { size: 9, family: 'Montserrat', weight: 'bold' },
+                                        color: '#64748b'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+                lucide.createIcons();
+            },
+
             renderCreate() {
                 document.getElementById('app-content').innerHTML = `
-                    <button onclick="router.go('home')" class="mb-4 text-[9px] font-black text-slate-400 uppercase flex items-center gap-1"><i data-lucide="chevron-left" class="w-4 h-4"></i> Voltar</button>
+                    <div class="flex items-center gap-3 mb-6">
+                        <button onclick="router.go('home')" class="p-2 bg-white rounded-lg border border-slate-200"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                        <h2 class="font-black text-sm uppercase text-slate-800 tracking-widest">Importar Dados</h2>
+                    </div>
                     <div class="app-card p-10 flex flex-col items-center text-center space-y-6">
-                        <div class="w-16 h-16 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center">
-                            <i data-lucide="upload" class="w-8 h-8"></i>
+                        <div class="w-20 h-20 bg-teal-50 text-teal-600 rounded-3xl flex items-center justify-center">
+                            <i data-lucide="upload-cloud" class="w-10 h-10"></i>
                         </div>
                         <div>
-                            <h3 class="font-black text-slate-900 uppercase text-xs tracking-widest">Importar Planilha</h3>
-                            <p class="text-[9px] text-slate-400 font-bold mt-2 uppercase">Formato aceito: .xlsx</p>
+                            <h3 class="font-black text-slate-900 uppercase text-xs tracking-widest">Planilha Excel</h3>
+                            <p class="text-[9px] text-slate-400 font-bold mt-2 uppercase">Selecione o arquivo .xlsx para extrair orçamentos automaticamente</p>
                         </div>
                         <input type="file" id="file-input" class="hidden" accept=".xlsx" onchange="handleFileUpload(event)">
-                        <button onclick="document.getElementById('file-input').click()" class="w-full py-4 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase">Selecionar Arquivo</button>
+                        <button onclick="document.getElementById('file-input').click()" class="w-full py-5 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-slate-200">Procurar Arquivo</button>
                     </div>
                 `;
             },
@@ -197,13 +318,13 @@
                             <label class="text-[8px] font-black text-slate-400 uppercase">Nº Orçamento</label>
                             <input type="text" class="w-24 font-black text-teal-600 bg-transparent border-b border-teal-200 text-center focus:outline-none" value="${state.docNumber}" oninput="state.docNumber = this.value; window.sync();">
                         </div>
-                        <button onclick="resetEditor()" class="p-2 bg-red-50 text-red-400 rounded-lg"><i data-lucide="trash" class="w-4 h-4"></i></button>
+                        <button onclick="resetEditor()" class="p-2 bg-red-50 text-red-400 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                     </div>
 
                     <div class="space-y-6 pb-64">
-                        <div class="app-card p-5 space-y-4 shadow-sm border-t-4 border-slate-900">
+                        <div class="app-card p-5 space-y-4 border-t-4 border-slate-900">
                             <div class="space-y-3">
-                                <label class="text-[9px] font-black text-slate-400 uppercase">Faturamento</label>
+                                <label class="text-[9px] font-black text-slate-400 uppercase">Modalidade de Faturamento</label>
                                 <div class="grid grid-cols-2 gap-2">
                                     <button onclick="setDocType('CONTRATO')" class="toggle-btn ${state.docType === 'CONTRATO' ? 'active' : ''}">Contrato</button>
                                     <button onclick="setDocType('FATURAR')" class="toggle-btn ${state.docType === 'FATURAR' ? 'active' : ''}">Faturar</button>
@@ -235,36 +356,36 @@
                                         </div>
                                         <div class="space-y-1">
                                             <label class="text-[7px] font-bold text-slate-400 uppercase">Elevador</label>
-                                            <input type="text" class="modern-input !text-xs font-black text-teal-700" value="${item.elevador || ''}" placeholder="86000" oninput="state.currentItems[${idx}].elevador = this.value; window.sync();">
+                                            <input type="text" class="modern-input !text-xs font-black text-teal-700" value="${item.elevador || ''}" placeholder="Equip." oninput="state.currentItems[${idx}].elevador = this.value; window.sync();">
                                         </div>
                                     </div>
                                     <div class="space-y-1">
                                         <label class="text-[7px] font-bold text-slate-400 uppercase">Condomínio</label>
-                                        <input type="text" class="modern-input !text-xs uppercase font-bold" value="${item.condominio || ''}" placeholder="Nome do Prédio" oninput="state.currentItems[${idx}].condominio = this.value; window.sync();">
+                                        <input type="text" class="modern-input !text-xs uppercase font-bold" value="${item.condominio || ''}" placeholder="Nome do Cliente" oninput="state.currentItems[${idx}].condominio = this.value; window.sync();">
                                     </div>
                                     <div class="space-y-1">
-                                        <label class="text-[7px] font-bold text-slate-400 uppercase">Peça / Descrição</label>
-                                        <textarea class="modern-input !text-xs uppercase" rows="2" placeholder="DESCRIÇÃO COMPLETA" oninput="state.currentItems[${idx}].peca = this.value; window.sync();">${item.peca || ''}</textarea>
+                                        <label class="text-[7px] font-bold text-slate-400 uppercase">Descrição Técnica</label>
+                                        <textarea class="modern-input !text-xs uppercase" rows="2" placeholder="Descreva a peça ou serviço" oninput="state.currentItems[${idx}].peca = this.value; window.sync();">${item.peca || ''}</textarea>
                                     </div>
                                     <div class="grid grid-cols-2 gap-3">
                                         <div class="space-y-1">
-                                            <label class="text-[7px] font-bold text-slate-400 uppercase">Quantidade</label>
+                                            <label class="text-[7px] font-bold text-slate-400 uppercase">Qtd.</label>
                                             <input type="number" class="modern-input !text-xs" value="${item.qtde || 1}" oninput="state.currentItems[${idx}].qtde = this.value; window.sync();">
                                         </div>
                                         <div class="space-y-1">
-                                            <label class="text-[7px] font-bold text-slate-400 uppercase">Valor (R$)</label>
+                                            <label class="text-[7px] font-bold text-slate-400 uppercase">Unitário (R$)</label>
                                             <input type="number" class="modern-input !text-xs font-bold text-right" value="${item.valorUnitario || 0}" oninput="state.currentItems[${idx}].valorUnitario = parseFloat(this.value) || 0; window.sync();">
                                         </div>
                                     </div>
                                 </div>
                             `).join('')}
-                            <button onclick="addItem()" class="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-[9px] font-black text-slate-400 uppercase hover:bg-white transition-colors">+ Adicionar Novo Item</button>
+                            <button onclick="addItem()" class="w-full py-4 border-2 border-dashed border-slate-200 rounded-xl text-[9px] font-black text-slate-400 uppercase hover:bg-white transition-all">+ Adicionar Item</button>
                         </div>
                     </div>
 
                     <div class="fixed bottom-0 left-0 w-full p-6 bg-white border-t border-slate-100 z-[110] shadow-2xl safe-area-bottom">
                         <div class="flex justify-between items-center mb-4">
-                            <span class="text-[9px] font-black text-slate-400 uppercase">Subtotal</span>
+                            <span class="text-[9px] font-black text-slate-400 uppercase">Total Estimado</span>
                             <span id="editor-total" class="text-xl font-black text-slate-900">R$ ${state.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
@@ -279,17 +400,17 @@
             renderHistory() {
                 const history = getHistory();
                 document.getElementById('app-content').innerHTML = `
-                    <div class="search-container">
+                    <div class="sticky top-[80px] bg-[#f8fafc] z-50 pb-4">
                         <div class="flex justify-between items-center mb-4 px-1">
-                            <h2 class="font-black text-[10px] uppercase text-slate-400 tracking-widest">Arquivo de Orçamentos</h2>
-                            <button onclick="clearHistory()" class="text-[8px] font-bold text-red-400 uppercase">Limpar Tudo</button>
+                            <h2 class="font-black text-[10px] uppercase text-slate-400 tracking-widest">Arquivo Digital</h2>
+                            <button onclick="clearHistory()" class="text-[8px] font-bold text-red-400 uppercase">Limpar Histórico</button>
                         </div>
                         <div class="relative">
                             <i data-lucide="search" class="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" id="search-input" oninput="handleSearch(this.value)" placeholder="Buscar O.S, Prédio, Peça..." class="modern-input pl-11 !text-xs bg-white shadow-sm">
+                            <input type="text" id="search-input" oninput="handleSearch(this.value)" placeholder="Procurar por O.S, Prédio ou Peça..." class="modern-input pl-11 !text-xs bg-white shadow-sm border-none">
                         </div>
                     </div>
-                    <div id="history-list" class="space-y-4 pb-8">
+                    <div id="history-list" class="space-y-4 pb-12">
                         ${this.generateHistoryItems(history)}
                     </div>
                 `;
@@ -303,44 +424,38 @@
                             <div class="flex justify-between items-start">
                                 <div>
                                     <div class="flex items-center gap-2 mb-1">
-                                        <span class="text-[8px] font-black bg-slate-100 px-2 py-0.5 rounded text-slate-500 uppercase">O.S. ${res.item.os || '---'}</span>
-                                        <span class="text-[8px] font-black bg-teal-50 px-2 py-0.5 rounded text-teal-600 uppercase">ELEV. ${res.item.elevador || '---'}</span>
+                                        <span class="text-[7px] font-black bg-slate-100 px-2 py-0.5 rounded text-slate-500 uppercase">O.S. ${res.item.os || '---'}</span>
+                                        <span class="text-[7px] font-black bg-teal-50 px-2 py-0.5 rounded text-teal-600 uppercase">ELEV. ${res.item.elevador || '---'}</span>
                                     </div>
                                     <h4 class="text-xs font-black text-slate-900 uppercase leading-tight">${res.item.condominio}</h4>
                                 </div>
-                                <button onclick="router.go('details', ${res.parent.id})" class="text-slate-400 p-1"><i data-lucide="external-link" class="w-4 h-4"></i></button>
+                                <button onclick="router.go('details', ${res.parent.id})" class="text-slate-400 p-1"><i data-lucide="eye" class="w-4 h-4"></i></button>
                             </div>
-                            <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                <p class="text-[9px] text-slate-600 font-bold uppercase leading-tight">${res.item.peca}</p>
-                            </div>
-                            <div class="flex justify-between items-center pt-2 border-t border-slate-100">
-                                <p class="text-[8px] font-bold text-slate-400 uppercase">Orç. #${res.parent.docNumber} | ${res.parent.docType}</p>
+                            <p class="text-[8px] text-slate-500 uppercase font-bold bg-slate-50 p-2 rounded-lg truncate">${res.item.peca}</p>
+                            <div class="flex justify-between items-center pt-2 border-t border-slate-50">
+                                <p class="text-[7px] font-bold text-slate-400 uppercase">DOC #${res.parent.docNumber} • ${new Date(res.parent.date).toLocaleDateString()}</p>
                                 <p class="text-xs font-black text-slate-900">R$ ${parseFloat(res.item.valorUnitario).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</p>
                             </div>
                         </div>
-                    `).join('') || '<div class="py-20 text-center opacity-20 font-black text-xs uppercase tracking-widest">Nada encontrado</div>';
+                    `).join('') || '<div class="py-20 text-center opacity-30 font-black text-[10px] uppercase">Nenhum resultado</div>';
                 }
 
                 return items.map(h => `
-                    <div class="app-card p-4 flex justify-between items-center hover:scale-[1.01] transition-transform ${h.docType === 'CONTRATO' ? 'card-contrato' : 'card-faturar'}">
+                    <div class="app-card p-4 flex justify-between items-center ${h.docType === 'CONTRATO' ? 'card-contrato' : 'card-faturar'}">
                         <div onclick="router.go('details', ${h.id})" class="flex-1 truncate cursor-pointer mr-2">
-                            <div class="mb-1">
-                                <p class="font-black text-xs text-title">#${h.docNumber}</p>
-                            </div>
-                            <div class="flex flex-col gap-0.5">
-                                <p class="text-[7px] font-black uppercase tracking-tighter opacity-70 truncate">${h.items.map(i => i.condominio).filter((v, i, a) => a.indexOf(v) === i).join(', ')}</p>
-                                <p class="text-[8px] font-bold uppercase opacity-50">${new Date(h.date).toLocaleDateString()} | ${h.serviceType}</p>
-                            </div>
+                            <p class="font-black text-xs text-title">ORÇAMENTO #${h.docNumber}</p>
+                            <p class="text-[7px] font-black uppercase tracking-tight opacity-70 truncate mt-1">${h.items.map(i => i.condominio).filter((v, i, a) => a.indexOf(v) === i).join(', ') || 'Sem Nome'}</p>
+                            <p class="text-[8px] font-bold uppercase opacity-50 mt-0.5">${new Date(h.date).toLocaleDateString()} • ${h.serviceType}</p>
                         </div>
                         <div class="flex items-center gap-3">
-                            <p class="text-[10px] font-black text-price mr-1">R$ ${h.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</p>
+                            <p class="text-[10px] font-black text-price">R$ ${h.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</p>
                             <div class="flex gap-1">
-                                <button onclick="reissuePDF(${h.id})" class="p-1.5 bg-white/10 rounded-lg"><i data-lucide="download" class="w-3.5 h-3.5"></i></button>
+                                <button onclick="reissuePDF(${h.id})" class="p-1.5 bg-white/10 rounded-lg"><i data-lucide="file-text" class="w-3.5 h-3.5"></i></button>
                                 <button onclick="deleteEntry(${h.id})" class="p-1.5 bg-red-500/10 text-red-400 rounded-lg"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
                             </div>
                         </div>
                     </div>
-                `).join('') || '<div class="py-20 text-center opacity-20 font-black text-xs uppercase tracking-widest">Arquivo vazio</div>';
+                `).join('') || '<div class="py-20 text-center opacity-30 font-black text-[10px] uppercase">Arquivo vazio</div>';
             },
 
             renderDetails(id) {
@@ -352,24 +467,24 @@
                     <div class="app-card p-6 space-y-6">
                         <div class="border-b border-slate-100 pb-4 flex justify-between items-start">
                             <div>
-                                <h3 class="text-lg font-black text-slate-900">#${item.docNumber}</h3>
+                                <h3 class="text-lg font-black text-slate-900">DOC #${item.docNumber}</h3>
                                 <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">${item.serviceType}</p>
                                 <p class="text-[8px] text-slate-400 mt-1">${new Date(item.date).toLocaleString()}</p>
                             </div>
                             <span class="px-3 py-1 ${item.docType === 'CONTRATO' ? 'bg-sky-500 text-white' : 'bg-teal-50 text-teal-600'} text-[8px] font-black rounded-lg uppercase">${item.docType}</span>
                         </div>
-                        <div class="space-y-3">
+                        <div class="space-y-4">
                             ${item.items.map((i, idx) => `
-                                <div class="text-[10px] bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
                                     <div class="flex justify-between items-start mb-2">
                                         <div class="flex flex-col gap-1">
-                                            <span class="text-teal-600 font-black uppercase text-[8px]">ITEM ${idx+1}</span>
+                                            <span class="text-teal-600 font-black uppercase text-[7px]">ITEM ${idx+1}</span>
                                             <div class="flex gap-1">
                                                 <span class="bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-tight">O.S. ${i.os || '---'}</span>
                                                 <span class="bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-tight">ELEV. ${i.elevador || '---'}</span>
                                             </div>
                                         </div>
-                                        <span class="font-black text-slate-900">R$ ${parseFloat(i.valorUnitario).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                                        <span class="font-black text-slate-900 text-xs">R$ ${parseFloat(i.valorUnitario).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
                                     </div>
                                     <p class="font-black uppercase text-slate-800 text-xs mb-1">${i.condominio}</p>
                                     <p class="text-slate-500 uppercase leading-relaxed font-bold text-[9px]">${i.peca}</p>
@@ -380,16 +495,16 @@
                             `).join('')}
                         </div>
                         <div class="pt-4 flex justify-between items-center border-t border-slate-100">
-                            <span class="text-[9px] font-black uppercase text-slate-400">Total</span>
+                            <span class="text-[9px] font-black uppercase text-slate-400">Subtotal</span>
                             <span class="text-xl font-black text-slate-900">R$ ${item.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3 mt-4">
-                        <button onclick="reissuePDF(${id})" class="py-4 bg-teal-600 text-white rounded-xl font-black text-[10px] uppercase flex items-center justify-center gap-3 shadow-lg">
-                            <i data-lucide="download" class="w-4 h-4"></i> Gerar PDF
+                    <div class="grid grid-cols-2 gap-3 mt-4 pb-12">
+                        <button onclick="reissuePDF(${id})" class="py-4 bg-teal-600 text-white rounded-xl font-black text-[10px] uppercase flex items-center justify-center gap-2 shadow-lg">
+                            <i data-lucide="file-down" class="w-4 h-4"></i> Baixar PDF
                         </button>
-                        <button onclick="loadToEditor(${id})" class="py-4 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase flex items-center justify-center gap-3 shadow-lg">
-                            <i data-lucide="copy" class="w-4 h-4"></i> Editar
+                        <button onclick="loadToEditor(${id})" class="py-4 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase flex items-center justify-center gap-2 shadow-lg">
+                            <i data-lucide="edit-3" class="w-4 h-4"></i> Editar Novo
                         </button>
                     </div>
                 `;
@@ -400,26 +515,20 @@
         window.handleSearch = function(term) {
             const history = getHistory();
             const listEl = document.getElementById('history-list');
-            
             if(!term.trim()) {
                 listEl.innerHTML = router.generateHistoryItems(history, false);
                 lucide.createIcons();
                 return;
             }
-
             const clean = (str) => String(str || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             const searchTerms = clean(term).split(" ");
-
             const results = [];
             history.forEach(parent => {
                 parent.items.forEach(item => {
                     const itemText = clean(`${item.peca} ${item.condominio} ${item.os} ${item.elevador} ${parent.docNumber} ${parent.docType} ${parent.serviceType}`);
-                    if (searchTerms.every(st => itemText.includes(st))) {
-                        results.push({ item, parent });
-                    }
+                    if (searchTerms.every(st => itemText.includes(st))) results.push({ item, parent });
                 });
             });
-
             listEl.innerHTML = router.generateHistoryItems(results, true);
             lucide.createIcons();
         };
@@ -436,7 +545,7 @@
                 };
                 saveDraft(state);
                 router.go('editor');
-                toast("Carregado para edição");
+                toast("Copiado para edição");
             }
         };
 
@@ -446,27 +555,14 @@
         };
 
         window.startManual = function() {
-            state = {
-                currentItems: [],
-                total: 0,
-                docType: 'FATURAR',
-                serviceType: 'TROCA DE PEÇAS',
-                docNumber: getNextNumber()
-            };
+            state = { currentItems: [], total: 0, docType: 'FATURAR', serviceType: 'TROCA DE PEÇAS', docNumber: getNextNumber() };
             addItem();
             router.go('editor');
             window.sync();
         };
 
         window.addItem = function() {
-            state.currentItems.push({
-                os: '',
-                elevador: '',
-                peca: '',
-                qtde: '1',
-                valorUnitario: 0,
-                condominio: ''
-            });
+            state.currentItems.push({ os: '', elevador: '', peca: '', qtde: '1', valorUnitario: 0, condominio: '' });
             if(document.getElementById('items-container')) router.renderEditor();
             window.sync();
         };
@@ -485,7 +581,7 @@
         };
 
         window.resetEditor = function() {
-            if(confirm("Deseja apagar esta sessão?")) {
+            if(confirm("Deseja iniciar um novo orçamento?")) {
                 clearDraft();
                 startManual();
             }
@@ -493,7 +589,6 @@
 
         window.finalizeAndPrint = function() {
             if(state.currentItems.length === 0) return toast("Lista vazia");
-            
             const finalData = {
                 id: Date.now(),
                 items: JSON.parse(JSON.stringify(state.currentItems)),
@@ -503,20 +598,15 @@
                 docNumber: state.docNumber,
                 date: new Date().toISOString()
             };
-            
             saveToHistory(finalData);
-
             if(!isNaN(state.docNumber)) {
                 let current = parseInt(localStorage.getItem(COUNTER_KEY) || '1000');
-                if (parseInt(state.docNumber) >= current) {
-                    localStorage.setItem(COUNTER_KEY, state.docNumber.toString());
-                }
+                if (parseInt(state.docNumber) >= current) localStorage.setItem(COUNTER_KEY, state.docNumber.toString());
             }
-
             generatePDF(finalData);
             clearDraft();
             state = { currentItems: [], total: 0, docType: 'FATURAR', serviceType: 'TROCA DE PEÇAS', docNumber: '' };
-            toast("Finalizado!");
+            toast("Arquivo Gerado!");
             router.go('home');
         };
 
@@ -529,19 +619,14 @@
                     const data = new Uint8Array(evt.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
                     const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1});
-
                     let startIdx = -1, headers = [];
-                    for(let i=0; i < Math.min(rows.length, 20); i++){
+                    for(let i=0; i < Math.min(rows.length, 25); i++){
                         const row = (rows[i] || []).map(c => String(c || "").toUpperCase());
-                        if(row.some(c => c.includes("DESCRIÇÃO") || c.includes("O.S") || c.includes("PEÇA"))){
-                            headers = row;
-                            startIdx = i + 1;
-                            break;
+                        if(row.some(c => c.includes("DESCRIÇÃO") || c.includes("O.S") || c.includes("PEÇA") || c.includes("CONDOMÍNIO"))){
+                            headers = row; startIdx = i + 1; break;
                         }
                     }
-
-                    if(startIdx === -1) throw new Error("Cabeçalho não encontrado");
-
+                    if(startIdx === -1) throw new Error();
                     const cols = {
                         os: headers.findIndex(h => h.includes("O.S") || h.includes("OS")),
                         elev: headers.findIndex(h => h.includes("ELEVADOR") || h.includes("EQUIP")),
@@ -550,16 +635,13 @@
                         val: headers.findIndex(h => h.includes("VALOR") || h.includes("UNIT") || h.includes("PREÇO")),
                         condo: headers.findIndex(h => h.includes("CONDOMÍNIO") || h.includes("CLIENTE"))
                     };
-
                     const newItems = rows.slice(startIdx).map(row => {
                         const peca = String(row[cols.peca] || "").trim();
                         if(!peca || peca.toUpperCase().includes("TOTAL")) return null;
-                        
                         const v = row[cols.val];
                         let num = 0;
                         if(typeof v === 'number') num = v;
                         else num = parseFloat(String(v || 0).replace(/[R$\s.]/g, '').replace(',', '.'));
-
                         return {
                             os: String(row[cols.os] || '').trim(),
                             elevador: String(row[cols.elev] || '').trim(),
@@ -569,19 +651,14 @@
                             condominio: String(row[cols.condo] || '').trim()
                         };
                     }).filter(x => x);
-
                     if(newItems.length > 0) {
                         state.currentItems = newItems;
                         state.docNumber = getNextNumber();
                         window.sync();
                         router.go('editor');
-                        toast("Importado com sucesso!");
-                    } else {
-                        toast("Nenhum item válido encontrado");
-                    }
-                } catch (err) {
-                    toast("Erro na planilha");
-                }
+                        toast("Importação concluída");
+                    } else toast("Planilha inválida");
+                } catch (err) { toast("Erro ao ler Excel"); }
             };
             reader.readAsArrayBuffer(file);
         };
@@ -590,91 +667,56 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4');
             const pageWidth = doc.internal.pageSize.getWidth();
-            const teal = [13, 148, 136];
-            const dark = [15, 23, 42];
-
-            doc.setFillColor(...dark);
-            doc.rect(0, 0, pageWidth, 50, 'F');
-            doc.setFillColor(...teal);
-            doc.rect(pageWidth - 85, 0, 85, 50, 'F');
-
-            doc.setTextColor(255, 255, 255);
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(22);
+            const teal = [13, 148, 136], dark = [15, 23, 42];
+            doc.setFillColor(...dark); doc.rect(0, 0, pageWidth, 50, 'F');
+            doc.setFillColor(...teal); doc.rect(pageWidth - 85, 0, 85, 50, 'F');
+            doc.setTextColor(255); doc.setFont("helvetica", "bold"); doc.setFontSize(22);
             doc.text("Torres Elevadores", 15, 20);
-            doc.setFontSize(8.5);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(180, 180, 180);
+            doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(180);
             doc.text(`CNPJ: ${EMPRESA.cnpj}`, 15, 29);
             doc.text(`TEL: ${EMPRESA.tel} | ${EMPRESA.email}`, 15, 34);
             doc.text(`${EMPRESA.endereco}`, 15, 39);
-
-            const greenCenterX = pageWidth - 42.5;
-            doc.setTextColor(255, 255, 255);
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(16);
-            doc.text(`ORÇAMENTO #${data.docNumber}`, greenCenterX, 17, {align: 'center'});
-            doc.setFontSize(8);
-            doc.setFont("helvetica", "normal");
-            doc.text(`${data.docType}`, greenCenterX, 25, {align: 'center'});
+            const gX = pageWidth - 42.5; doc.setTextColor(255); doc.setFontSize(16); doc.setFont("helvetica", "bold");
+            doc.text(`ORÇAMENTO #${data.docNumber}`, gX, 17, {align: 'center'});
+            doc.setFontSize(8); doc.setFont("helvetica", "normal");
+            doc.text(`${data.docType}`, gX, 25, {align: 'center'});
             doc.line(pageWidth - 75, 29, pageWidth - 10, 29);
-            doc.setFontSize(7.5);
-            doc.text(`CLIENTE: ${CLIENTE_PADRAO}`, greenCenterX, 34, {align: 'center'});
-            doc.text(`DATA: ${new Date(data.date).toLocaleDateString()}`, greenCenterX, 39, {align: 'center'});
-            doc.setFont("helvetica", "bold");
-            doc.text(`${data.serviceType}`, greenCenterX, 44, {align: 'center'});
-
+            doc.setFontSize(7.5); doc.text(`CLIENTE: ${CLIENTE_PADRAO}`, gX, 34, {align: 'center'});
+            doc.text(`DATA: ${new Date(data.date).toLocaleDateString()}`, gX, 39, {align: 'center'});
+            doc.setFont("helvetica", "bold"); doc.text(`${data.serviceType}`, gX, 44, {align: 'center'});
             doc.autoTable({
-                startY: 58,
-                margin: { left: 10, right: 10 },
-                head: [['#', 'O.S.', 'EQUIP.', 'CONDOMÍNIO', 'DESCRIÇÃO DA PEÇA', 'QTDE', 'VALOR (R$)']],
-                body: data.items.map((i, idx) => [
-                    idx + 1, i.os, i.elevador, i.condominio, i.peca.toUpperCase(), i.qtde,
-                    parseFloat(i.valorUnitario).toLocaleString('pt-BR', {minimumFractionDigits: 2})
-                ]),
+                startY: 58, margin: { left: 10, right: 10 },
+                head: [['#', 'O.S.', 'EQUIP.', 'CONDOMÍNIO', 'DESCRIÇÃO', 'QTDE', 'VALOR (R$)']],
+                body: data.items.map((i, idx) => [idx + 1, i.os, i.elevador, i.condominio, i.peca.toUpperCase(), i.qtde, parseFloat(i.valorUnitario).toLocaleString('pt-BR', {minimumFractionDigits: 2})]),
                 theme: 'striped',
                 headStyles: { fillColor: dark, fontSize: 7, halign: 'center' },
                 styles: { fontSize: 6.5, cellPadding: 3 },
-                columnStyles: {
-                    0: { halign: 'center' },
-                    2: { fontStyle: 'bold' },
-                    5: { halign: 'center' },
-                    6: { halign: 'right', fontStyle: 'bold' }
-                }
+                columnStyles: { 0: {halign: 'center'}, 2: {fontStyle:'bold'}, 5: {halign:'center'}, 6: {halign:'right', fontStyle:'bold'} }
             });
-
             const finalY = doc.lastAutoTable.finalY + 10;
-            doc.setFillColor(...teal);
-            doc.rect(pageWidth - 75, finalY - 5, 65, 10, 'F');
-            doc.setFontSize(10);
-            doc.setTextColor(255, 255, 255);
+            doc.setFillColor(...teal); doc.rect(pageWidth - 75, finalY - 5, 65, 10, 'F');
+            doc.setFontSize(10); doc.setTextColor(255);
             doc.text("TOTAL GERAL:", pageWidth - 70, finalY + 1.5);
             doc.text(`R$ ${data.total.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`, pageWidth - 15, finalY + 1.5, {align: 'right'});
-
-            doc.setFontSize(7);
-            doc.setTextColor(150);
-            doc.text("* Validade do orçamento: 10 dias úteis.", 10, finalY + 20);
-            doc.setFillColor(...dark);
-            doc.rect(0, 287, pageWidth, 10, 'F');
-            doc.setTextColor(255);
-            doc.text("Torres Elevadores - Qualidade e Segurança", pageWidth/2, 293.5, {align: 'center'});
-
-            doc.save(`TORRES_ORC_${data.docNumber}.pdf`);
+            doc.setFontSize(7); doc.setTextColor(150); doc.text("* Validade do orçamento: 10 dias úteis.", 10, finalY + 20);
+            doc.setFillColor(...dark); doc.rect(0, 287, pageWidth, 10, 'F');
+            doc.setTextColor(255); doc.text("Torres Elevadores - Qualidade e Segurança", pageWidth/2, 293.5, {align: 'center'});
+            doc.save(`TORRES_${data.docNumber}.pdf`);
         };
 
         window.deleteEntry = function(id) {
-            if(confirm("Excluir definitivamente?")) {
+            if(confirm("Excluir registro permanentemente?")) {
                 const h = getHistory().filter(x => x.id !== id);
                 localStorage.setItem(DB_KEY, JSON.stringify(h));
-                router.renderHistory();
-                toast("Excluído");
+                router.go('history');
+                toast("Registro apagado");
             }
         };
 
         window.clearHistory = function() {
-            if(confirm("Limpar arquivo?")) {
+            if(confirm("Deseja apagar TODO o histórico? Esta ação é irreversível.")) {
                 localStorage.setItem(DB_KEY, '[]');
-                router.renderHistory();
+                router.go('history');
                 toast("Histórico limpo");
             }
         };
@@ -688,12 +730,8 @@
             const t = document.getElementById('app-toast');
             if(!t) return;
             t.innerText = msg;
-            t.style.opacity = '1';
-            t.style.bottom = '120px';
-            setTimeout(() => {
-                t.style.opacity = '0';
-                t.style.bottom = '112px';
-            }, 2500);
+            t.style.opacity = '1'; t.style.bottom = '120px';
+            setTimeout(() => { t.style.opacity = '0'; t.style.bottom = '112px'; }, 2500);
         };
 
         window.onload = () => router.go('home');
